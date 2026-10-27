@@ -42,7 +42,17 @@ private val handCraftedLevels = listOf(
     level("Gece Işıkları", "GECE", "GECE", "ECE", "GE", setOf("CE")),
     level("Kış Sabahı", "KIŞ", "KIŞ", "IŞ", "KI", emptySet()),
     level("Renkli Sokak", "RENK", "RENK", "ERK", "NE", setOf("ER")),
-    level("Yolculuk", "YOL", "YOL", "OY", "OL", setOf("YO")),
+    Level(
+        title = "Yolculuk",
+        letters = "YOL".toList(),
+        targets = listOf("YOL", "OY", "OL"),
+        bonusWords = setOf("YO"),
+        placements = listOf(
+            Placement("YOL", 2, 0, true),
+            Placement("OY", 2, 1, false),
+            Placement("OL", 1, 2, false),
+        ),
+    ),
     level("Bahar Rüzgarı", "BAHAR", "BAHAR", "ARA", "HAR", setOf("AH", "BAR")),
     level("Kum Saati", "SAAT", "SAAT", "SAT", "ATA", setOf("AS")),
     level("Mavi Göl", "MAVİ", "MAVİ", "AV", "Vİ", setOf("MA")),
