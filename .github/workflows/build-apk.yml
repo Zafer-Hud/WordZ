@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      WORDZ_KEYSTORE_PATH: ${{ github.workspace }}/.wordz-signing/wordz-test.keystore
 
     steps:
       - name: Checkout
@@ -23,6 +25,28 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.11.1"
+
+      - name: Restore stable WordZ signing key
+        uses: actions/cache@v4
+        with:
+          path: .wordz-signing
+          key: wordz-debug-signing-v1
+
+      - name: Create signing key on first build
+        shell: bash
+        run: |
+          mkdir -p .wordz-signing
+          if [ ! -f "$WORDZ_KEYSTORE_PATH" ]; then
+            keytool -genkeypair \
+              -keystore "$WORDZ_KEYSTORE_PATH" \
+              -storepass wordztest123 \
+              -keypass wordztest123 \
+              -alias wordz-test \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=WordZ Test, OU=WordZ, O=Zafer, L=Istanbul, ST=Istanbul, C=TR"
+          fi
 
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
