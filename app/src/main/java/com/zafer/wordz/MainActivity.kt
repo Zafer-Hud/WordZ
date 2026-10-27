@@ -173,7 +173,7 @@ private fun HomeScreen(coins: Int, unlockedLevel: Int, completedCount: Int, onCo
         Spacer(Modifier.height(12.dp))
         Button(onClick = onMap, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF234782))) { Text("BÖLÜMLER") }
         Spacer(Modifier.height(24.dp))
-        Text("v0.5.0", color = Color(0xFF6984B7), fontSize = 12.sp)
+        Text("v${BuildConfig.VERSION_NAME}", color = Color(0xFF6984B7), fontSize = 12.sp)
     }
 }
 
