@@ -1,6 +1,7 @@
 package com.zafer.wordz
 
 import android.content.SharedPreferences
+import android.util.Log
 
 data class SavedLevelProgress(
     val foundWords: Set<String> = emptySet(),
@@ -79,6 +80,23 @@ fun validateLevel(level: Level): ValidatedLevel {
     return ValidatedLevel(map)
 }
 
-fun validateAllLevels() {
-    levels.forEach(::validateLevel)
+/**
+ * Startup validation must never take the whole app down because of one bad level.
+ * Strict validation is still performed by validateLevel(), while this method logs
+ * every data problem and returns the messages so tests/tooling can inspect them.
+ */
+fun validateAllLevels(): List<String> {
+    val issues = levels.mapNotNull { level ->
+        runCatching { validateLevel(level) }
+            .exceptionOrNull()
+            ?.message
+            ?.let { "${level.title}: $it" }
+    }
+    issues.forEach { Log.e("WordZLevelValidation", it) }
+    return issues
+}
+
+fun validateAllLevelsOrThrow() {
+    val issues = validateAllLevels()
+    require(issues.isEmpty()) { issues.joinToString(separator = "\n") }
 }
