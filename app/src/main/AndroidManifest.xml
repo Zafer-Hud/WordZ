@@ -8,7 +8,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WordZ">
         <activity
-            android:name=".Base44V2MainActivity"
+            android:name=".Base44V3MainActivity"
             android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>
@@ -16,6 +16,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".Base44V2MainActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".Base44MainActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".V17MainActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity android:name=".V16MainActivity" android:exported="false" android:screenOrientation="portrait" />
