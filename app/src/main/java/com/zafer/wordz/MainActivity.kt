@@ -56,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
@@ -75,7 +76,7 @@ class MainActivity : ComponentActivity() {
 
 private data class Cell(val row: Int, val col: Int)
 private data class Chapter(val title: String, val subtitle: String, val start: Int, val endExclusive: Int)
-private enum class Screen { HOME, CHAPTERS, MAP, GAME }
+private enum class Screen { HOME, CHAPTERS, MAP, GAME, SETTINGS }
 
 private val trLocale = Locale("tr", "TR")
 private const val PREFS = "wordz_progress"
@@ -83,6 +84,10 @@ private const val KEY_UNLOCKED = "unlocked_level"
 private const val KEY_COINS = "coins"
 private const val KEY_COMPLETED = "completed_levels"
 private const val KEY_STARS = "level_stars"
+private const val KEY_DAILY_DATE = "daily_reward_date"
+private const val KEY_CLAIMED_CHESTS = "claimed_star_chests"
+private const val KEY_SOUND = "sound_enabled"
+private const val KEY_HAPTIC = "haptic_enabled"
 
 private fun chapters(): List<Chapter> = levels.indices.chunked(5).mapIndexed { index, chunk ->
     val names = listOf("Başlangıç Vadisi", "Sahil Yolu", "Yeşil Orman", "Güneş Tepeleri", "Gece Rotası", "Uzak Diyarlar", "Zafer Zirvesi")
@@ -118,9 +123,18 @@ fun WordZApp() {
     var coins by remember { mutableIntStateOf(prefs.getInt(KEY_COINS, 100)) }
     var completedLevels by remember { mutableStateOf(migratedCompleted) }
     var levelStars by remember { mutableStateOf(savedStars.toMap()) }
+    var claimedChests by remember { mutableIntStateOf(prefs.getInt(KEY_CLAIMED_CHESTS, 0)) }
+    var dailyDate by remember { mutableStateOf(prefs.getString(KEY_DAILY_DATE, "").orEmpty()) }
+    var soundEnabled by remember { mutableStateOf(prefs.getBoolean(KEY_SOUND, true)) }
+    var hapticEnabled by remember { mutableStateOf(prefs.getBoolean(KEY_HAPTIC, true)) }
     var screen by remember { mutableStateOf(Screen.HOME) }
     var selectedLevel by remember { mutableIntStateOf(unlockedLevel) }
     var selectedChapter by remember { mutableIntStateOf((unlockedLevel / 5).coerceIn(0, chapters().lastIndex)) }
+
+    val totalStars = levelStars.values.sum()
+    val availableChests = (totalStars / 15 - claimedChests).coerceAtLeast(0)
+    val today = LocalDate.now().toString()
+    val dailyAvailable = dailyDate != today
 
     fun persist() {
         prefs.edit()
@@ -128,6 +142,10 @@ fun WordZApp() {
             .putInt(KEY_COINS, coins)
             .putStringSet(KEY_COMPLETED, completedLevels.map(Int::toString).toSet())
             .putStringSet(KEY_STARS, encodeStars(levelStars))
+            .putInt(KEY_CLAIMED_CHESTS, claimedChests)
+            .putString(KEY_DAILY_DATE, dailyDate)
+            .putBoolean(KEY_SOUND, soundEnabled)
+            .putBoolean(KEY_HAPTIC, hapticEnabled)
             .apply()
     }
 
@@ -135,13 +153,43 @@ fun WordZApp() {
         Screen.HOME -> HomeScreen(
             coins = coins,
             completedCount = completedLevels.size,
-            totalStars = levelStars.values.sum(),
+            totalStars = totalStars,
+            dailyAvailable = dailyAvailable,
+            availableChests = availableChests,
             onContinue = {
                 selectedLevel = unlockedLevel
                 selectedChapter = (unlockedLevel / 5).coerceIn(0, chapters().lastIndex)
                 screen = Screen.GAME
             },
             onChapters = { screen = Screen.CHAPTERS },
+            onDaily = {
+                if (dailyAvailable) {
+                    coins += 40
+                    dailyDate = today
+                    prefs.edit().putInt(KEY_COINS, coins).putString(KEY_DAILY_DATE, dailyDate).apply()
+                }
+            },
+            onChest = {
+                if (availableChests > 0) {
+                    coins += 75
+                    claimedChests += 1
+                    prefs.edit().putInt(KEY_COINS, coins).putInt(KEY_CLAIMED_CHESTS, claimedChests).apply()
+                }
+            },
+            onSettings = { screen = Screen.SETTINGS },
+        )
+        Screen.SETTINGS -> SettingsScreen(
+            soundEnabled = soundEnabled,
+            hapticEnabled = hapticEnabled,
+            onToggleSound = {
+                soundEnabled = !soundEnabled
+                prefs.edit().putBoolean(KEY_SOUND, soundEnabled).apply()
+            },
+            onToggleHaptic = {
+                hapticEnabled = !hapticEnabled
+                prefs.edit().putBoolean(KEY_HAPTIC, hapticEnabled).apply()
+            },
+            onBack = { persist(); screen = Screen.HOME },
         )
         Screen.CHAPTERS -> ChapterScreen(
             unlockedLevel = unlockedLevel,
@@ -162,6 +210,8 @@ fun WordZApp() {
             levelIndex = selectedLevel,
             coins = coins,
             previousStars = levelStars[selectedLevel] ?: 0,
+            soundEnabled = soundEnabled,
+            hapticEnabled = hapticEnabled,
             onCoinsChanged = { newCoins ->
                 coins = newCoins
                 prefs.edit().putInt(KEY_COINS, newCoins).apply()
@@ -169,12 +219,21 @@ fun WordZApp() {
             onBack = { persist(); screen = Screen.MAP },
             onCompleted = { earnedStars ->
                 val firstCompletion = selectedLevel !in completedLevels
-                completedLevels = completedLevels + selectedLevel
+                val newCompleted = completedLevels + selectedLevel
                 val oldStars = levelStars[selectedLevel] ?: 0
-                if (earnedStars > oldStars) levelStars = levelStars + (selectedLevel to earnedStars)
-                if (firstCompletion) coins += 25
-                if (selectedLevel >= unlockedLevel && unlockedLevel < levels.lastIndex) unlockedLevel = selectedLevel + 1
-                persist()
+                val newStars = if (earnedStars > oldStars) levelStars + (selectedLevel to earnedStars) else levelStars
+                val newCoins = coins + if (firstCompletion) 25 else 0
+                val newUnlocked = if (selectedLevel >= unlockedLevel && unlockedLevel < levels.lastIndex) selectedLevel + 1 else unlockedLevel
+                completedLevels = newCompleted
+                levelStars = newStars
+                coins = newCoins
+                unlockedLevel = newUnlocked
+                prefs.edit()
+                    .putInt(KEY_UNLOCKED, newUnlocked)
+                    .putInt(KEY_COINS, newCoins)
+                    .putStringSet(KEY_COMPLETED, newCompleted.map(Int::toString).toSet())
+                    .putStringSet(KEY_STARS, encodeStars(newStars))
+                    .apply()
             },
             onNext = {
                 val chapter = chapters()[selectedChapter]
@@ -185,32 +244,91 @@ fun WordZApp() {
 }
 
 @Composable
-private fun HomeScreen(coins: Int, completedCount: Int, totalStars: Int, onContinue: () -> Unit, onChapters: () -> Unit) {
+private fun HomeScreen(
+    coins: Int,
+    completedCount: Int,
+    totalStars: Int,
+    dailyAvailable: Boolean,
+    availableChests: Int,
+    onContinue: () -> Unit,
+    onChapters: () -> Unit,
+    onDaily: () -> Unit,
+    onChest: () -> Unit,
+    onSettings: () -> Unit,
+) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("WordZ", color = Color.White, fontSize = 56.sp, fontWeight = FontWeight.Black)
+        Text("WordZ", color = Color.White, fontSize = 54.sp, fontWeight = FontWeight.Black)
         Text("Kelime Bulmaca", color = Color(0xFF9EB5E4), fontSize = 18.sp)
-        Spacer(Modifier.height(26.dp))
-        Box(Modifier.background(Color(0xFF11264D), RoundedCornerShape(28.dp)).padding(20.dp)) {
+        Spacer(Modifier.height(20.dp))
+        Box(Modifier.background(Color(0xFF11264D), RoundedCornerShape(28.dp)).padding(18.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("★ $totalStars / ${levels.size * 3}", color = Color(0xFFFFD166), fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text("★ $totalStars / ${levels.size * 3}", color = Color(0xFFFFD166), fontSize = 23.sp, fontWeight = FontWeight.Black)
                 Text("$completedCount/${levels.size} level tamamlandı", color = Color.White, fontWeight = FontWeight.Bold)
                 Text("🪙 $coins", color = Color(0xFFFFD166), fontSize = 15.sp)
             }
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = onDaily,
+                enabled = dailyAvailable,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7A5A16)),
+            ) { Text(if (dailyAvailable) "🎁 Günlük +40" else "✓ Günlük Alındı", fontSize = 12.sp) }
+            Button(
+                onClick = onChest,
+                enabled = availableChests > 0,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8C5C20)),
+            ) { Text(if (availableChests > 0) "📦 Sandık +75" else "📦 ${15 - (totalStars % 15)}★ sonra", fontSize = 12.sp) }
+        }
+        Spacer(Modifier.height(16.dp))
         Button(onClick = onContinue, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2D8CFF))) {
             Text("DEVAM ET", fontWeight = FontWeight.Black)
         }
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onChapters, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF234782))) {
-            Text("BÖLÜMLER")
-        }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(9.dp))
+        Button(onClick = onChapters, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF234782))) { Text("BÖLÜMLER") }
+        Spacer(Modifier.height(9.dp))
+        Button(onClick = onSettings, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A3159))) { Text("⚙ AYARLAR") }
+        Spacer(Modifier.height(18.dp))
         Text("v${BuildConfig.VERSION_NAME}", color = Color(0xFF6984B7), fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun SettingsScreen(
+    soundEnabled: Boolean,
+    hapticEnabled: Boolean,
+    onToggleSound: () -> Unit,
+    onToggleHaptic: () -> Unit,
+    onBack: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+            Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF203A6D))) { Text("← Geri") }
+        }
+        Spacer(Modifier.height(40.dp))
+        Text("Ayarlar", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = onToggleSound, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF193B70))) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("🔊 Ses Efektleri", fontWeight = FontWeight.Bold)
+                Text(if (soundEnabled) "AÇIK" else "KAPALI", color = if (soundEnabled) Color(0xFF7EF0B8) else Color(0xFFFFA0A0))
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onToggleHaptic, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF193B70))) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("📳 Titreşim", fontWeight = FontWeight.Bold)
+                Text(if (hapticEnabled) "AÇIK" else "KAPALI", color = if (hapticEnabled) Color(0xFF7EF0B8) else Color(0xFFFFA0A0))
+            }
+        }
+        Spacer(Modifier.height(28.dp))
+        Text("Ayarların otomatik kaydedilir.", color = Color(0xFF9EB5E4), fontSize = 13.sp)
     }
 }
 
@@ -280,11 +398,7 @@ private fun ZigzagLevelMap(
             levelIndices.forEachIndexed { localIndex, globalIndex ->
                 val unlocked = globalIndex <= unlockedLevel
                 val earned = stars[globalIndex] ?: 0
-                val arrangement = when (localIndex % 3) {
-                    0 -> Arrangement.Start
-                    1 -> Arrangement.Center
-                    else -> Arrangement.End
-                }
+                val arrangement = when (localIndex % 3) { 0 -> Arrangement.Start; 1 -> Arrangement.Center; else -> Arrangement.End }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = arrangement) {
                     Button(
                         enabled = unlocked,
@@ -317,6 +431,8 @@ private fun GameScreen(
     levelIndex: Int,
     coins: Int,
     previousStars: Int,
+    soundEnabled: Boolean,
+    hapticEnabled: Boolean,
     onCoinsChanged: (Int) -> Unit,
     onBack: () -> Unit,
     onCompleted: (Int) -> Unit,
@@ -335,14 +451,15 @@ private fun GameScreen(
     var liveWord by remember(levelIndex) { mutableStateOf("") }
     var status by remember(levelIndex) { mutableStateOf("Harfleri sürükleyerek birleştir") }
     var hintsUsed by remember(levelIndex) { mutableIntStateOf(0) }
+    var combo by remember(levelIndex) { mutableIntStateOf(0) }
 
     val earnedStars = when (hintsUsed) { 0 -> 3; 1 -> 2; 2 -> 1; else -> 0 }
     val complete = level.targets.all { it in foundWords }
     LaunchedEffect(complete) {
         if (complete) {
             onCompleted(earnedStars)
-            tone.startTone(ToneGenerator.TONE_PROP_ACK, 180)
-            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            if (soundEnabled) tone.startTone(ToneGenerator.TONE_PROP_ACK, 180)
+            if (hapticEnabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
 
@@ -360,28 +477,28 @@ private fun GameScreen(
                 Text("★".repeat(previousStars) + "☆".repeat(3 - previousStars), color = Color(0xFFFFD166), fontSize = 11.sp)
             }
         }
-        Spacer(Modifier.height(7.dp))
+        Spacer(Modifier.height(6.dp))
         CrosswordBoard(level, foundWords, hintedCells)
-        Spacer(Modifier.height(5.dp))
+        Spacer(Modifier.height(4.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("${foundWords.size}/${level.targets.size} kelime", color = Color.White, fontSize = 12.sp)
-            Text("Bu tur: " + "★".repeat(earnedStars) + "☆".repeat(3 - earnedStars), color = Color(0xFFFFD166), fontSize = 12.sp)
+            Text(if (combo >= 2) "🔥 Combo x$combo" else "Bu tur: " + "★".repeat(earnedStars) + "☆".repeat(3 - earnedStars), color = Color(0xFFFFD166), fontSize = 12.sp)
         }
-        Spacer(Modifier.height(6.dp))
-        Box(Modifier.fillMaxWidth().scale(statusScale).background(Color(0xFF12264B), RoundedCornerShape(16.dp)).padding(9.dp), contentAlignment = Alignment.Center) {
+        Spacer(Modifier.height(5.dp))
+        Box(Modifier.fillMaxWidth().scale(statusScale).background(Color(0xFF12264B), RoundedCornerShape(16.dp)).padding(8.dp), contentAlignment = Alignment.Center) {
             Text(
                 if (liveWord.isNotBlank()) liveWord else status,
                 color = when {
                     liveWord.isNotBlank() -> Color.White
                     status.startsWith("Bonus") -> Color(0xFFFFD166)
-                    status.startsWith("Harika") -> Color(0xFF7EF0B8)
+                    status.startsWith("Harika") || status.startsWith("Combo") -> Color(0xFF7EF0B8)
                     else -> Color(0xFFA8BCE1)
                 },
                 fontWeight = FontWeight.Bold,
                 fontSize = if (liveWord.isNotBlank()) 22.sp else 13.sp,
             )
         }
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(2.dp))
         LetterWheel(
             letters = wheelLetters,
             selectedIndices = selectedIndices,
@@ -394,22 +511,27 @@ private fun GameScreen(
                 when {
                     submitted in level.targets && submitted !in foundWords -> {
                         foundWords = foundWords + submitted
-                        onCoinsChanged(coins + 5)
-                        status = "Harika! $submitted"
-                        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 100)
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        combo += 1
+                        val comboReward = if (combo > 0 && combo % 3 == 0) 10 else 0
+                        onCoinsChanged(coins + 5 + comboReward)
+                        status = if (comboReward > 0) "Combo x$combo! +$comboReward 🪙" else "Harika! $submitted"
+                        if (soundEnabled) tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 100)
+                        if (hapticEnabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
                     submitted in foundWords -> status = "$submitted zaten bulundu"
                     submitted in level.bonusWords && submitted !in foundBonusWords -> {
                         foundBonusWords = foundBonusWords + submitted
-                        onCoinsChanged(coins + 10)
-                        status = "Bonus kelime! +10 🪙"
-                        tone.startTone(ToneGenerator.TONE_PROP_BEEP, 80)
+                        combo += 1
+                        val comboReward = if (combo > 0 && combo % 3 == 0) 10 else 0
+                        onCoinsChanged(coins + 10 + comboReward)
+                        status = if (comboReward > 0) "Combo x$combo! +${10 + comboReward} 🪙" else "Bonus kelime! +10 🪙"
+                        if (soundEnabled) tone.startTone(ToneGenerator.TONE_PROP_BEEP, 80)
                     }
                     submitted in foundBonusWords -> status = "$submitted bonus olarak bulundu"
                     submitted.isNotBlank() -> {
-                        status = "$submitted bu levelde yok"
-                        tone.startTone(ToneGenerator.TONE_PROP_NACK, 90)
+                        combo = 0
+                        status = "$submitted bu levelde yok · combo sıfırlandı"
+                        if (soundEnabled) tone.startTone(ToneGenerator.TONE_PROP_NACK, 90)
                     }
                 }
                 selectedIndices = emptyList()
@@ -428,6 +550,7 @@ private fun GameScreen(
                         onCoinsChanged(coins - 25)
                         hintedCells = hintedCells + it
                         hintsUsed += 1
+                        combo = 0
                         status = "Harf ipucu açıldı · yıldız etkilenir"
                     }
                 },
@@ -440,20 +563,21 @@ private fun GameScreen(
                         onCoinsChanged(coins - 60)
                         foundWords = foundWords + it
                         hintsUsed += 2
+                        combo = 0
                         status = "Kelime ipucu: $it"
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9A5B32)),
             ) { Text("Kelime 60", fontSize = 12.sp) }
         }
-        Spacer(Modifier.height(5.dp))
+        Spacer(Modifier.height(4.dp))
         AnimatedVisibility(complete) {
-            Box(Modifier.fillMaxWidth().background(Color(0xFF123D36), RoundedCornerShape(22.dp)).padding(12.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxWidth().background(Color(0xFF123D36), RoundedCornerShape(22.dp)).padding(11.dp), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("LEVEL TAMAMLANDI", color = Color(0xFF7EF0B8), fontSize = 17.sp, fontWeight = FontWeight.Black)
-                    Text("★".repeat(earnedStars) + "☆".repeat(3 - earnedStars), color = Color(0xFFFFD166), fontSize = 28.sp, fontWeight = FontWeight.Black)
-                    Text(if (earnedStars > previousStars) "Yeni yıldız rekoru!" else "En iyi: $previousStars★", color = Color.White, fontSize = 12.sp)
-                    Spacer(Modifier.height(6.dp))
+                    Text("★".repeat(earnedStars) + "☆".repeat(3 - earnedStars), color = Color(0xFFFFD166), fontSize = 27.sp, fontWeight = FontWeight.Black)
+                    Text(if (earnedStars > previousStars) "Yeni yıldız rekoru! · İlk bitiriş +25 🪙" else "En iyi: $previousStars★", color = Color.White, fontSize = 12.sp)
+                    Spacer(Modifier.height(5.dp))
                     Button(onClick = onNext, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25A878))) { Text("Devam") }
                 }
             }
