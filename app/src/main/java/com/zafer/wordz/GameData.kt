@@ -41,7 +41,7 @@ private val handCraftedLevels = listOf(
     level("Deniz Esintisi", "DENİZ", "DENİZ", "DİZ", "İZ", setOf("DEN")),
     level("Gece Işıkları", "GECE", "GECE", "ECE", "GE", setOf("CE")),
     level("Kış Sabahı", "KIŞ", "KIŞ", "IŞ", "KI", emptySet()),
-    level("Renkli Sokak", "RENK", "RENK", "ERK", "EN", setOf("ER")),
+    level("Renkli Sokak", "RENK", "RENK", "ERK", "NE", setOf("ER")),
     level("Yolculuk", "YOL", "YOL", "OY", "OL", setOf("YO")),
     level("Bahar Rüzgarı", "BAHAR", "BAHAR", "ARA", "HAR", setOf("AH", "BAR")),
     level("Kum Saati", "SAAT", "SAAT", "SAT", "ATA", setOf("AS")),
