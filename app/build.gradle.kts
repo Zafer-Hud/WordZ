@@ -4,6 +4,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val ciKeystorePath = System.getenv("WORDZ_KEYSTORE_PATH")
+
 android {
     namespace = "com.zafer.wordz"
     compileSdk = 35
@@ -12,11 +14,25 @@ android {
         applicationId = "com.zafer.wordz"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            if (!ciKeystorePath.isNullOrBlank()) {
+                storeFile = file(ciKeystorePath)
+                storePassword = "wordztest123"
+                keyAlias = "wordz-test"
+                keyPassword = "wordztest123"
+            }
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
