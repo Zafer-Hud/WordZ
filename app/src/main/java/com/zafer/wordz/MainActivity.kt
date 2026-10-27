@@ -17,8 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -76,9 +75,10 @@ private val levels = listOf(
 fun WordZGame() {
     var levelIndex by remember { mutableIntStateOf(0) }
     val level = levels[levelIndex]
+    var wheelLetters by remember(levelIndex) { mutableStateOf(level.letters) }
     var foundWords by remember(levelIndex) { mutableStateOf(setOf<String>()) }
-    var selectedIndices by remember { mutableStateOf(emptyList<Int>()) }
-    var liveWord by remember { mutableStateOf("") }
+    var selectedIndices by remember(levelIndex) { mutableStateOf(emptyList<Int>()) }
+    var liveWord by remember(levelIndex) { mutableStateOf("") }
     var status by remember(levelIndex) { mutableStateOf("Harfleri sürükleyerek birleştir") }
 
     val complete = level.targets.all { it in foundWords }
@@ -118,11 +118,11 @@ fun WordZGame() {
         Spacer(Modifier.height(18.dp))
 
         LetterWheel(
-            letters = level.letters,
+            letters = wheelLetters,
             selectedIndices = selectedIndices,
             onSelectionChanged = { selection ->
                 selectedIndices = selection
-                liveWord = selection.joinToString("") { level.letters[it].toString() }
+                liveWord = selection.joinToString("") { wheelLetters[it].toString() }
             },
             onSelectionFinished = {
                 val submitted = liveWord.uppercase()
@@ -142,9 +142,9 @@ fun WordZGame() {
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = {
-                val shuffled = level.letters.shuffled()
-                levelsMutableOverride[levelIndex] = level.copy(letters = shuffled)
-                levelIndex = levelIndex
+                wheelLetters = wheelLetters.shuffled()
+                selectedIndices = emptyList()
+                liveWord = ""
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF243A73))
         ) {
@@ -156,9 +156,7 @@ fun WordZGame() {
             Text("BÖLÜM TAMAMLANDI!", color = Color(0xFF72E1A6), fontSize = 20.sp, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(10.dp))
             Button(
-                onClick = {
-                    levelIndex = (levelIndex + 1) % levels.size
-                },
+                onClick = { levelIndex = (levelIndex + 1) % levels.size },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF28B487))
             ) {
                 Text("Sonraki Bölüm")
@@ -166,8 +164,6 @@ fun WordZGame() {
         }
     }
 }
-
-private val levelsMutableOverride = mutableMapOf<Int, Level>()
 
 @Composable
 private fun WordBoard(targets: List<String>, found: Set<String>) {
@@ -208,12 +204,12 @@ private fun LetterWheel(
     onSelectionChanged: (List<Int>) -> Unit,
     onSelectionFinished: () -> Unit
 ) {
-    var size by remember { mutableStateOf(IntSize.Zero) }
+    var wheelSize by remember { mutableStateOf(IntSize.Zero) }
 
     fun positions(): List<Offset> {
-        if (size == IntSize.Zero) return emptyList()
-        val center = Offset(size.width / 2f, size.height / 2f)
-        val radius = minOf(size.width, size.height) * 0.33f
+        if (wheelSize == IntSize.Zero) return emptyList()
+        val center = Offset(wheelSize.width / 2f, wheelSize.height / 2f)
+        val radius = minOf(wheelSize.width, wheelSize.height) * 0.33f
         return letters.indices.map { index ->
             val angle = -PI / 2 + (2 * PI * index / letters.size)
             Offset(
@@ -226,7 +222,7 @@ private fun LetterWheel(
     fun indexAt(point: Offset): Int? {
         val points = positions()
         if (points.isEmpty()) return null
-        val hitRadius = minOf(size.width, size.height) * 0.13f
+        val hitRadius = minOf(wheelSize.width, wheelSize.height) * 0.13f
         return points.indices.firstOrNull { i ->
             hypot((point.x - points[i].x).toDouble(), (point.y - points[i].y).toDouble()) <= hitRadius
         }
@@ -235,19 +231,28 @@ private fun LetterWheel(
     Box(
         modifier = Modifier
             .size(300.dp)
-            .onSizeChanged { size = it }
-            .pointerInput(letters, size) {
+            .onSizeChanged { wheelSize = it }
+            .pointerInput(letters, wheelSize) {
+                var gestureSelection = emptyList<Int>()
                 detectDragGestures(
                     onDragStart = { point ->
                         val index = indexAt(point)
-                        if (index != null) onSelectionChanged(listOf(index))
+                        gestureSelection = if (index != null) listOf(index) else emptyList()
+                        onSelectionChanged(gestureSelection)
                     },
-                    onDragEnd = onSelectionFinished,
-                    onDragCancel = onSelectionFinished,
+                    onDragEnd = {
+                        onSelectionFinished()
+                        gestureSelection = emptyList()
+                    },
+                    onDragCancel = {
+                        onSelectionFinished()
+                        gestureSelection = emptyList()
+                    },
                     onDrag = { change, _ ->
                         val index = indexAt(change.position)
-                        if (index != null && index !in selectedIndices) {
-                            onSelectionChanged(selectedIndices + index)
+                        if (index != null && index !in gestureSelection) {
+                            gestureSelection = gestureSelection + index
+                            onSelectionChanged(gestureSelection)
                         }
                     }
                 )
