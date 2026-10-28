@@ -118,7 +118,9 @@ internal fun Base44ModeGameScreen(
             enter = fadeIn() + scaleIn(initialScale = .94f),
         ) {
             Box(
-                Modifier.fillMaxSize().background(Color.Black.copy(alpha = .78f)),
+                Modifier.fillMaxSize()
+                    .background(Color.Black.copy(alpha = .78f))
+                    .clickable(enabled = true, onClick = {}),
                 contentAlignment = Alignment.Center,
             ) {
                 androidx.compose.foundation.layout.Column(
