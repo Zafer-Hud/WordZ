@@ -42,28 +42,11 @@ class GameProgressStore(private val prefs: SharedPreferences) {
     }
 }
 
+/** Legacy validator kept only for migration/fallback authoring tools. */
 data class ValidatedCell(val row: Int, val col: Int)
 data class ValidatedLevel(val lettersByCell: Map<ValidatedCell, Char>)
 
 fun validateLevel(level: Level): ValidatedLevel {
-    if (level.gridCells.isNotEmpty() || level.wordsToFind.isNotEmpty()) {
-        val canonical = level.toBase44WordLevel(1)
-        val issues = validateBase44WordLevel(canonical)
-        require(issues.isEmpty()) { "${level.title}: ${issues.joinToString("; ")}" }
-
-        val map = linkedMapOf<ValidatedCell, Char>()
-        level.gridCells.forEach { cell -> map[ValidatedCell(cell.row, cell.col)] = cell.letter }
-
-        val available = deriveBase44WheelLetters(level.targets).groupingBy { it }.eachCount()
-        level.targets.forEach { word ->
-            val needed = word.groupingBy { it }.eachCount()
-            require(needed.all { (char, count) -> (available[char] ?: 0) >= count }) {
-                "${level.title}: '$word' harf çarkından üretilemiyor"
-            }
-        }
-        return ValidatedLevel(map)
-    }
-
     require(level.targets.toSet() == level.placements.map { it.word }.toSet()) {
         "${level.title}: hedef kelimeler ile yerleşimler eşleşmiyor"
     }
@@ -95,12 +78,14 @@ fun validateLevel(level: Level): ValidatedLevel {
     return ValidatedLevel(map)
 }
 
+/**
+ * Active runtime validation is canonical-only. It never converts Base44 cell lists
+ * back to the legacy row/column Placement model, so imported GridEditor data can
+ * retain its exact words_to_find.cells representation.
+ */
 fun validateAllLevels(): List<String> {
-    val issues = levels.mapNotNull { level ->
-        runCatching { validateLevel(level) }
-            .exceptionOrNull()
-            ?.message
-            ?.let { "${level.title}: $it" }
+    val issues = Base44RuntimeLevels.canonicalLevels.flatMap { level ->
+        validateBase44WordLevel(level).map { "Bölüm ${level.levelNumber}: $it" }
     }
     issues.forEach { Log.e("WordZLevelValidation", it) }
     return issues
