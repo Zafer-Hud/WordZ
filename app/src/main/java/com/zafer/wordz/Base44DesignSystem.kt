@@ -67,7 +67,7 @@ internal object B44V2Colors {
     val Red = Color(0xFFEF4444)
 }
 
-/** Central visual constants used by the active Base44 Compose surfaces. */
+/** Central visual constants used by active WordZ Compose surfaces. */
 internal object B44Ui {
     val ScreenPadding = 20.dp
     val CardRadius = 20.dp
@@ -92,6 +92,7 @@ internal const val B44V2_HINTS = "b44_hints"
 
 internal enum class B44V2Screen { HOME, MAP, GAME, MARKET, PROFILE }
 
+/** Compatibility shape: these records now represent theme worlds, not countries. */
 internal data class B44Country(
     val id: String,
     val name: String,
@@ -109,7 +110,7 @@ internal fun B44V2Background(content: @Composable () -> Unit) {
             Brush.verticalGradient(listOf(B44V2Colors.Bg0, B44V2Colors.Bg1, B44V2Colors.Bg2))
         )
     ) {
-        val transition = rememberInfiniteTransition(label = "base44Ambient")
+        val transition = rememberInfiniteTransition(label = "wordzAmbient")
         val emeraldScale by transition.animateFloat(
             1f, 1.12f,
             infiniteRepeatable(tween(7000), RepeatMode.Reverse),
@@ -185,7 +186,7 @@ internal fun B44V2BottomNav(
     val items = remember {
         listOf(
             B44NavItem(B44V2Screen.HOME, Icons.Filled.Home, "Ana Sayfa"),
-            B44NavItem(B44V2Screen.MAP, Icons.Filled.Map, "Harita"),
+            B44NavItem(B44V2Screen.MAP, Icons.Filled.Map, "Bölümler"),
             B44NavItem(B44V2Screen.MARKET, Icons.Filled.ShoppingBag, "Market"),
             B44NavItem(B44V2Screen.PROFILE, Icons.Filled.Person, "Profil"),
         )
