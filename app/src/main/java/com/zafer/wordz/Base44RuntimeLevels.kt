@@ -64,10 +64,13 @@ object Base44RuntimeLevels {
         canonicalLevels.indexOfFirst { it.levelNumber == levelNumber }
 }
 
-/** Initializes level data before the launcher Activity is created. */
+/** Initializes canonical level data and persistent save migrations before the launcher Activity. */
 class Base44LevelInitProvider : ContentProvider() {
     override fun onCreate(): Boolean {
-        context?.applicationContext?.let(Base44RuntimeLevels::initialize)
+        context?.applicationContext?.let { appContext ->
+            Base44RuntimeLevels.initialize(appContext)
+            Base44SaveMigrator.migrate(appContext)
+        }
         return true
     }
 
