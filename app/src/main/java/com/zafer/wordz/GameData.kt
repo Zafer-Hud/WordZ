@@ -1,74 +1,80 @@
 package com.zafer.wordz
 
-data class Placement(val word: String, val row: Int, val col: Int, val horizontal: Boolean)
-data class Level(
-    val title: String,
-    val letters: List<Char>,
-    val targets: List<String>,
-    val bonusWords: Set<String>,
-    val placements: List<Placement>,
-    val country: String? = null,
-    val gridRows: Int = 0,
-    val gridCols: Int = 0,
-    val gridCells: List<Base44GridCell> = emptyList(),
-    val wordsToFind: List<Base44TargetWord> = emptyList(),
-    val isActive: Boolean = true,
-)
+private fun fallbackCountryId(levelNumber: Int): String = when (levelNumber) {
+    in 1..20 -> "misir"
+    in 21..40 -> "fransa"
+    in 41..60 -> "sili"
+    in 61..80 -> "ispanya"
+    in 81..100 -> "turkiye"
+    else -> "japonya"
+}
 
-private fun level(
+private fun canonicalCrossword(
+    levelNumber: Int,
     title: String,
-    letters: String,
     main: String,
     second: String,
     third: String,
-    bonus: Set<String> = emptySet(),
-): Level {
+): Base44WordLevel {
     val firstCross = main.indexOf(second.first()).coerceAtLeast(0)
     val thirdCross = main.lastIndexOf(third.first()).let { if (it >= 0) it else main.lastIndex }
-    return Level(
+    val map = linkedMapOf<Pair<Int, Int>, Char>()
+
+    fun target(word: String, startRow: Int, startCol: Int, horizontal: Boolean): Base44TargetWord {
+        val cells = word.indices.map { index ->
+            val row = startRow + if (horizontal) 0 else index
+            val col = startCol + if (horizontal) index else 0
+            val letter = word[index]
+            val key = row to col
+            val previous = map[key]
+            require(previous == null || previous == letter) { "$title: geçersiz kesişim $key ($previous/$letter)" }
+            map[key] = letter
+            Base44CellPosition(row, col)
+        }
+        return Base44TargetWord(word, cells)
+    }
+
+    val words = listOf(
+        target(main, 2, 0, true),
+        target(second, 2, firstCross, false),
+        target(third, 2, thirdCross, false),
+    )
+    val rows = ((map.keys.maxOfOrNull { it.first } ?: 2) + 1).coerceAtLeast(3)
+    val cols = ((map.keys.maxOfOrNull { it.second } ?: 2) + 1).coerceAtLeast(3)
+    return Base44WordLevel(
+        levelNumber = levelNumber,
+        country = fallbackCountryId(levelNumber),
+        gridRows = rows,
+        gridCols = cols,
+        gridCells = map.map { (pos, letter) -> Base44GridCell(pos.first, pos.second, letter) },
+        wordsToFind = words,
         title = title,
-        letters = letters.toList(),
-        targets = listOf(main, second, third),
-        bonusWords = bonus,
-        placements = listOf(
-            Placement(main, 2, 0, true),
-            Placement(second, 2, firstCross, false),
-            Placement(third, 2, thirdCross, false),
-        ),
     )
 }
 
-private val handCraftedLevels = listOf(
-    level("Başlangıç", "KALE", "KALE", "KAL", "ELA", setOf("ALE", "EL")),
-    level("Sıcak Kumlar", "MASA", "MASA", "ASA", "AMA", setOf("AS")),
-    level("Taş Yolu", "TAŞ", "TAŞ", "AŞ", "TA", emptySet()),
-    level("Elma Bahçesi", "ELMA", "ELMA", "ELA", "MAL", setOf("EL", "AL")),
-    level("Oyun Zamanı", "OYUN", "OYUN", "OY", "YUN", setOf("UN")),
-    level("Deniz Esintisi", "DENİZ", "DENİZ", "DİZ", "İZ", setOf("DEN")),
-    level("Gece Işıkları", "GECE", "GECE", "ECE", "GE", setOf("CE")),
-    level("Kış Sabahı", "KIŞ", "KIŞ", "IŞ", "KI", emptySet()),
-    level("Renkli Sokak", "RENK", "RENK", "ERK", "NE", setOf("ER")),
-    Level(
-        title = "Yolculuk",
-        letters = "YOL".toList(),
-        targets = listOf("YOL", "OY", "OL"),
-        bonusWords = setOf("YO"),
-        placements = listOf(
-            Placement("YOL", 2, 0, true),
-            Placement("OY", 2, 1, false),
-            Placement("OL", 1, 2, false),
-        ),
-    ),
-    level("Bahar Rüzgarı", "BAHAR", "BAHAR", "ARA", "HAR", setOf("AH", "BAR")),
-    level("Kum Saati", "SAAT", "SAAT", "SAT", "ATA", setOf("AS")),
-    level("Mavi Göl", "MAVİ", "MAVİ", "AV", "Vİ", setOf("MA")),
-    level("Orman Yolu", "ORMAN", "ORMAN", "ORAN", "ROM", setOf("AN", "ON")),
-    level("Güneşli Gün", "GÜNEŞ", "GÜNEŞ", "GÜN", "EŞ", setOf("ÜN")),
-    level("Tatlı Mola", "TATLI", "TATLI", "TAT", "ALT", setOf("AT", "AL")),
-    level("Kırmızı Çatı", "ÇATI", "ÇATI", "ATI", "ÇAT", setOf("AT")),
-    level("Sessiz Gece", "SESSİZ", "SESSİZ", "SES", "SİZ", setOf("SİS")),
-    level("Uzak Ada", "ADA", "ADA", "AD", "DA", emptySet()),
-    level("Final Tepesi", "ZAFER", "ZAFER", "ZAR", "FER", setOf("AF", "ER")),
+private data class FallbackSeed(val title: String, val main: String, val second: String, val third: String)
+
+private val handCraftedSeeds = listOf(
+    FallbackSeed("Başlangıç", "KALE", "KAL", "ELA"),
+    FallbackSeed("Sıcak Kumlar", "MASA", "ASA", "AMA"),
+    FallbackSeed("Taş Yolu", "TAŞ", "AŞ", "TA"),
+    FallbackSeed("Elma Bahçesi", "ELMA", "ELA", "MAL"),
+    FallbackSeed("Oyun Zamanı", "OYUN", "OY", "YUN"),
+    FallbackSeed("Deniz Esintisi", "DENİZ", "DİZ", "İZ"),
+    FallbackSeed("Gece Işıkları", "GECE", "ECE", "GE"),
+    FallbackSeed("Kış Sabahı", "KIŞ", "IŞ", "KI"),
+    FallbackSeed("Renkli Sokak", "RENK", "ERK", "NE"),
+    FallbackSeed("Yolculuk", "YOL", "OY", "OL"),
+    FallbackSeed("Bahar Rüzgarı", "BAHAR", "ARA", "HAR"),
+    FallbackSeed("Kum Saati", "SAAT", "SAT", "ATA"),
+    FallbackSeed("Mavi Göl", "MAVİ", "AV", "Vİ"),
+    FallbackSeed("Orman Yolu", "ORMAN", "ORAN", "ROM"),
+    FallbackSeed("Güneşli Gün", "GÜNEŞ", "GÜN", "EŞ"),
+    FallbackSeed("Tatlı Mola", "TATLI", "TAT", "ALT"),
+    FallbackSeed("Kırmızı Çatı", "ÇATI", "ATI", "ÇAT"),
+    FallbackSeed("Sessiz Gece", "SESSİZ", "SES", "SİZ"),
+    FallbackSeed("Uzak Ada", "ADA", "AD", "DA"),
+    FallbackSeed("Final Tepesi", "ZAFER", "ZAR", "FER"),
 )
 
 private val turkishWordBank = setOf(
@@ -86,7 +92,7 @@ private val turkishWordBank = setOf(
     "KİLİM", "KİL", "MİL", "İLİK",
     "MASAL", "MASA", "SAL", "AS",
     "KASAP", "KASA", "SAP", "KAS", "PAS",
-    "TABAK", "BAK", "BAT", "KAT"
+    "TABAK", "BAK", "BAT", "KAT",
 )
 
 private val automaticSeeds = listOf(
@@ -117,9 +123,8 @@ private fun canBuildWord(word: String, letters: String): Boolean {
     return true
 }
 
-private fun generateLevel(title: String, main: String): Level {
-    val candidates = turkishWordBank
-        .asSequence()
+private fun generatedSeed(title: String, main: String): FallbackSeed {
+    val candidates = turkishWordBank.asSequence()
         .filter { it != main }
         .filter { it.length in 2 until main.length }
         .filter { canBuildWord(it, main) }
@@ -136,37 +141,22 @@ private fun generateLevel(title: String, main: String): Level {
         }
         if (targets.size == 2) break
     }
-
     require(targets.size == 2) { "Otomatik bölüm için yeterli kesişen kelime yok: $main" }
-
-    val second = targets[0]
-    val third = targets[1]
-    val bonus = candidates.filter { it !in targets }.take(4).toSet()
-
-    return level(
-        title = "Otomatik · $title",
-        letters = main,
-        main = main,
-        second = second,
-        third = third,
-        bonus = bonus,
-    )
+    return FallbackSeed("Otomatik · $title", main, targets[0], targets[1])
 }
 
-private val generatedLevels = automaticSeeds.map { (title, main) -> generateLevel(title, main) }
+private val generatedSeeds = automaticSeeds.map { (title, main) -> generatedSeed(title, main) }
 
-internal val legacyLevels: List<Level> = handCraftedLevels + generatedLevels
-
-val base44CanonicalLevels: List<Base44WordLevel> = legacyLevels.mapIndexed { index, legacy ->
+/**
+ * Local safety fallback only. Production Base44 content is supplied through assets/word_levels.json.
+ * The exact source fallback wins when it passes canonical validation; otherwise the safe local seed is used.
+ */
+val base44CanonicalLevels: List<Base44WordLevel> = (handCraftedSeeds + generatedSeeds).mapIndexed { index, seed ->
     val levelNumber = index + 1
     val exact = base44ExactFallbackLevels.firstOrNull { it.levelNumber == levelNumber }
-    if (exact != null && validateBase44WordLevel(exact).isEmpty()) exact
-    else legacy.toBase44WordLevel(levelNumber)
-}
-
-val levels: List<Level> = object : AbstractList<Level>() {
-    override val size: Int
-        get() = Base44RuntimeLevels.canonicalLevels.size
-
-    override fun get(index: Int): Level = Base44RuntimeLevels.canonicalLevels[index].toLegacyLevel()
+    if (exact != null && validateBase44WordLevel(exact).isEmpty()) {
+        exact
+    } else {
+        canonicalCrossword(levelNumber, seed.title, seed.main, seed.second, seed.third)
+    }
 }
