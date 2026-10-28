@@ -36,12 +36,12 @@ internal class WordZAppState(private val prefs: SharedPreferences) {
         .filter { it in 0 until levelCount }
         .toSet()
 
-    fun setCoins(value: Int) {
+    fun updateCoins(value: Int) {
         coins = value.coerceAtLeast(0)
         prefs.edit().putInt(B44V2_COINS, coins).apply()
     }
 
-    fun setHints(value: Int) {
+    fun updateHints(value: Int) {
         hints = value.coerceAtLeast(0)
         prefs.edit().putInt(B44V2_HINTS, hints).apply()
     }
