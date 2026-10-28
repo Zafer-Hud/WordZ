@@ -7,6 +7,12 @@ data class Level(
     val targets: List<String>,
     val bonusWords: Set<String>,
     val placements: List<Placement>,
+    val country: String? = null,
+    val gridRows: Int = 0,
+    val gridCols: Int = 0,
+    val gridCells: List<Base44GridCell> = emptyList(),
+    val wordsToFind: List<Base44TargetWord> = emptyList(),
+    val isActive: Boolean = true,
 )
 
 private fun level(
@@ -58,7 +64,7 @@ private val handCraftedLevels = listOf(
     level("Mavi Göl", "MAVİ", "MAVİ", "AV", "Vİ", setOf("MA")),
     level("Orman Yolu", "ORMAN", "ORMAN", "ORAN", "ROM", setOf("AN", "ON")),
     level("Güneşli Gün", "GÜNEŞ", "GÜNEŞ", "GÜN", "EŞ", setOf("ÜN")),
-    level("Tatlı Mola", "TATLI", "TATLI", "TAT", "ALT", setOf("AT", "AL")),
+    level("Tatlı Mola", "TATLI", "TAT", "ALT", "TAL", setOf("AT", "AL")),
     level("Kırmızı Çatı", "ÇATI", "ÇATI", "ATI", "ÇAT", setOf("AT")),
     level("Sessiz Gece", "SESSİZ", "SESSİZ", "SES", "SİZ", setOf("SİS")),
     level("Uzak Ada", "ADA", "ADA", "AD", "DA", emptySet()),
@@ -135,10 +141,7 @@ private fun generateLevel(title: String, main: String): Level {
 
     val second = targets[0]
     val third = targets[1]
-    val bonus = candidates
-        .filter { it !in targets }
-        .take(4)
-        .toSet()
+    val bonus = candidates.filter { it !in targets }.take(4).toSet()
 
     return level(
         title = "Otomatik · $title",
@@ -152,4 +155,13 @@ private fun generateLevel(title: String, main: String): Level {
 
 private val generatedLevels = automaticSeeds.map { (title, main) -> generateLevel(title, main) }
 
-val levels: List<Level> = handCraftedLevels + generatedLevels
+internal val legacyLevels: List<Level> = handCraftedLevels + generatedLevels
+
+val base44CanonicalLevels: List<Base44WordLevel> = legacyLevels.mapIndexed { index, legacy ->
+    val levelNumber = index + 1
+    val exact = base44ExactFallbackLevels.firstOrNull { it.levelNumber == levelNumber }
+    if (exact != null && validateBase44WordLevel(exact).isEmpty()) exact
+    else legacy.toBase44WordLevel(levelNumber)
+}
+
+val levels: List<Level> = base44CanonicalLevels.map { it.toLegacyLevel() }
