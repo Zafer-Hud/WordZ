@@ -26,21 +26,22 @@ internal class Base44ModeStore(private val prefs: SharedPreferences) {
         const val SPEED_LIMIT_MS = 90_000L
     }
 
+    private fun savedDate(): LocalDate? = prefs.getString(DAILY_DONE_DATE, null)?.let { raw ->
+        runCatching { LocalDate.parse(raw) }.getOrNull()
+    }
+
     fun dailyLevelIndex(levelCount: Int, date: LocalDate = LocalDate.now()): Int =
         base44DailyLevelIndex(levelCount, date.toEpochDay())
 
-    fun dailySnapshot(levelCount: Int, date: LocalDate = LocalDate.now()): Base44DailySnapshot {
-        val doneDate = prefs.getString(DAILY_DONE_DATE, null)?.let { runCatching(LocalDate::parse).getOrNull() }
-        return Base44DailySnapshot(
-            date = date,
-            levelIndex = dailyLevelIndex(levelCount, date),
-            streak = prefs.getInt(DAILY_STREAK, 0).coerceAtLeast(0),
-            completedToday = doneDate == date,
-        )
-    }
+    fun dailySnapshot(levelCount: Int, date: LocalDate = LocalDate.now()): Base44DailySnapshot = Base44DailySnapshot(
+        date = date,
+        levelIndex = dailyLevelIndex(levelCount, date),
+        streak = prefs.getInt(DAILY_STREAK, 0).coerceAtLeast(0),
+        completedToday = savedDate() == date,
+    )
 
     fun completeDaily(date: LocalDate = LocalDate.now()): Int {
-        val previousDate = prefs.getString(DAILY_DONE_DATE, null)?.let { runCatching(LocalDate::parse).getOrNull() }
+        val previousDate = savedDate()
         if (previousDate == date) return prefs.getInt(DAILY_STREAK, 0).coerceAtLeast(0)
         val previousStreak = prefs.getInt(DAILY_STREAK, 0).coerceAtLeast(0)
         val nextStreak = if (previousDate == date.minusDays(1)) previousStreak + 1 else 1
