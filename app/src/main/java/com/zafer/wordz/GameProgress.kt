@@ -42,47 +42,7 @@ class GameProgressStore(private val prefs: SharedPreferences) {
     }
 }
 
-/** Legacy validator kept only for migration/fallback authoring tools. */
-data class ValidatedCell(val row: Int, val col: Int)
-data class ValidatedLevel(val lettersByCell: Map<ValidatedCell, Char>)
-
-fun validateLevel(level: Level): ValidatedLevel {
-    require(level.targets.toSet() == level.placements.map { it.word }.toSet()) {
-        "${level.title}: hedef kelimeler ile yerleşimler eşleşmiyor"
-    }
-
-    val available = level.letters.groupingBy { it }.eachCount()
-    fun canBuild(word: String): Boolean {
-        val needed = word.groupingBy { it }.eachCount()
-        return needed.all { (char, count) -> (available[char] ?: 0) >= count }
-    }
-
-    (level.targets + level.bonusWords).forEach { word ->
-        require(canBuild(word)) { "${level.title}: '$word' harf çarkından üretilemiyor" }
-    }
-
-    val map = linkedMapOf<ValidatedCell, Char>()
-    level.placements.forEach { placement ->
-        placement.word.forEachIndexed { index, char ->
-            val cell = ValidatedCell(
-                row = placement.row + if (placement.horizontal) 0 else index,
-                col = placement.col + if (placement.horizontal) index else 0,
-            )
-            val previous = map[cell]
-            require(previous == null || previous == char) {
-                "${level.title}: geçersiz kesişim $cell ($previous / $char)"
-            }
-            map[cell] = char
-        }
-    }
-    return ValidatedLevel(map)
-}
-
-/**
- * Active runtime validation is canonical-only. It never converts Base44 cell lists
- * back to the legacy row/column Placement model, so imported GridEditor data can
- * retain its exact words_to_find.cells representation.
- */
+/** Canonical-only validation used by startup diagnostics and CI. */
 fun validateAllLevels(): List<String> {
     val issues = Base44RuntimeLevels.canonicalLevels.flatMap { level ->
         validateBase44WordLevel(level).map { "Bölüm ${level.levelNumber}: $it" }
