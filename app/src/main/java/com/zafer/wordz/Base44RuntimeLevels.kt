@@ -11,6 +11,10 @@ object Base44RuntimeLevels {
     @Volatile
     private var active: List<Base44WordLevel>? = null
 
+    @Volatile
+    var source: String = "fallback"
+        private set
+
     val canonicalLevels: List<Base44WordLevel>
         get() = active ?: base44CanonicalLevels
 
@@ -18,6 +22,7 @@ object Base44RuntimeLevels {
         val assetNames = runCatching { context.assets.list("")?.toSet().orEmpty() }.getOrDefault(emptySet())
         if ("word_levels.json" !in assetNames) {
             active = base44CanonicalLevels
+            source = "fallback"
             return
         }
 
@@ -34,26 +39,29 @@ object Base44RuntimeLevels {
             require(parsed.map { it.levelNumber } == (1..120).toList()) {
                 "level_number değerleri 1..120 aralığında eksiksiz ve sıralı olmalı"
             }
-
             parsed.forEach { level ->
                 val issues = validateBase44WordLevel(level)
                 require(issues.isEmpty()) { "Bölüm ${level.levelNumber}: ${issues.joinToString("; ")}" }
-                val expectedCountry = base44CountryForLevel(level.levelNumber).id
-                require(level.country == expectedCountry) {
-                    "Bölüm ${level.levelNumber}: country '${level.country}', beklenen '$expectedCountry'"
-                }
             }
             parsed
         }
 
         result.onSuccess {
             active = it
+            source = "asset"
             Log.i("WordZLevelImport", "120 canonical Base44 WordLevel asset'ten yüklendi")
         }.onFailure {
             active = base44CanonicalLevels
+            source = "fallback"
             Log.e("WordZLevelImport", "word_levels.json reddedildi; güvenli fallback kullanılıyor", it)
         }
     }
+
+    fun levelsForCountry(countryId: String): List<Base44WordLevel> =
+        canonicalLevels.filter { it.country == countryId }
+
+    fun indexOfLevelNumber(levelNumber: Int): Int =
+        canonicalLevels.indexOfFirst { it.levelNumber == levelNumber }
 }
 
 /** Initializes level data before the launcher Activity is created. */
