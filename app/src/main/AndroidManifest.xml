@@ -7,6 +7,11 @@
         android:label="WordZ Kelime Bulmaca"
         android:supportsRtl="true"
         android:theme="@style/Theme.WordZ">
+        <provider
+            android:name=".Base44LevelInitProvider"
+            android:authorities="${applicationId}.levelinit"
+            android:exported="false"
+            android:initOrder="100" />
         <activity
             android:name=".Base44V3MainActivity"
             android:exported="true"
