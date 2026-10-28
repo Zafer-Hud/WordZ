@@ -64,7 +64,7 @@ private val handCraftedLevels = listOf(
     level("Mavi Göl", "MAVİ", "MAVİ", "AV", "Vİ", setOf("MA")),
     level("Orman Yolu", "ORMAN", "ORMAN", "ORAN", "ROM", setOf("AN", "ON")),
     level("Güneşli Gün", "GÜNEŞ", "GÜNEŞ", "GÜN", "EŞ", setOf("ÜN")),
-    level("Tatlı Mola", "TATLI", "TAT", "ALT", "TAL", setOf("AT", "AL")),
+    level("Tatlı Mola", "TATLI", "TATLI", "TAT", "ALT", setOf("AT", "AL")),
     level("Kırmızı Çatı", "ÇATI", "ÇATI", "ATI", "ÇAT", setOf("AT")),
     level("Sessiz Gece", "SESSİZ", "SESSİZ", "SES", "SİZ", setOf("SİS")),
     level("Uzak Ada", "ADA", "ADA", "AD", "DA", emptySet()),
