@@ -2,6 +2,7 @@ package androidx.compose.ui.draw
 
 import android.content.res.Resources
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer as realGraphicsLayer
 
 class Base44GraphicsLayerScope {
     var rotationY: Float = 0f
@@ -11,6 +12,9 @@ class Base44GraphicsLayerScope {
 }
 
 fun Modifier.graphicsLayer(block: Base44GraphicsLayerScope.() -> Unit): Modifier {
-    Base44GraphicsLayerScope().apply(block)
-    return this
+    val values = Base44GraphicsLayerScope().apply(block)
+    return this.realGraphicsLayer {
+        rotationY = values.rotationY
+        cameraDistance = values.cameraDistance
+    }
 }
