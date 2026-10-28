@@ -18,14 +18,7 @@ data class Base44WordLevel(
     val title: String = "Bölüm $levelNumber",
 )
 
-private fun base44CountryIdForLevel(levelNumber: Int): String = when (levelNumber) {
-    in 1..20 -> "misir"
-    in 21..40 -> "fransa"
-    in 41..60 -> "sili"
-    in 61..80 -> "ispanya"
-    in 81..100 -> "turkiye"
-    else -> "japonya"
-}
+internal val BASE44_COUNTRY_IDS = setOf("misir", "fransa", "sili", "ispanya", "turkiye", "japonya")
 
 fun deriveBase44WheelLetters(words: List<String>): List<Char> {
     val maxCounts = linkedMapOf<Char, Int>()
@@ -39,17 +32,23 @@ fun deriveBase44WheelLetters(words: List<String>): List<Char> {
 fun validateBase44WordLevel(level: Base44WordLevel): List<String> {
     val issues = mutableListOf<String>()
     if (level.levelNumber <= 0) issues += "level_number 1 veya daha büyük olmalı"
-    if (level.country !in setOf("misir", "fransa", "sili", "ispanya", "turkiye", "japonya")) issues += "geçersiz country: ${level.country}"
+    if (level.country !in BASE44_COUNTRY_IDS) issues += "geçersiz country: ${level.country}"
     if (level.gridRows !in 3..10) issues += "grid_rows 3..10 aralığında olmalı"
     if (level.gridCols !in 3..10) issues += "grid_cols 3..10 aralığında olmalı"
+    if (level.gridCells.isEmpty()) issues += "grid_cells boş olamaz"
+    if (level.wordsToFind.isEmpty()) issues += "words_to_find boş olamaz"
 
     val cellMap = linkedMapOf<Pair<Int, Int>, Char>()
     level.gridCells.forEach { cell ->
-        if (cell.row !in 0 until level.gridRows || cell.col !in 0 until level.gridCols) issues += "grid cell sınır dışında: (${cell.row},${cell.col})"
+        if (cell.row !in 0 until level.gridRows || cell.col !in 0 until level.gridCols) {
+            issues += "grid cell sınır dışında: (${cell.row},${cell.col})"
+        }
         val key = cell.row to cell.col
         val previous = cellMap[key]
-        if (previous != null && previous != cell.letter) issues += "aynı koordinatta çakışan harf: $key ($previous/${cell.letter})"
-        else if (previous != null) issues += "tekrarlanan grid cell: $key"
+        when {
+            previous != null && previous != cell.letter -> issues += "aynı koordinatta çakışan harf: $key ($previous/${cell.letter})"
+            previous != null -> issues += "tekrarlanan grid cell: $key"
+        }
         cellMap[key] = cell.letter
     }
 
@@ -57,7 +56,9 @@ fun validateBase44WordLevel(level: Base44WordLevel): List<String> {
     level.wordsToFind.forEach { target ->
         if (target.word.isBlank()) issues += "boş hedef kelime"
         if (!seenWords.add(target.word)) issues += "tekrarlanan hedef kelime: ${target.word}"
-        if (target.word.length != target.cells.size) issues += "${target.word}: kelime uzunluğu (${target.word.length}) ile cell sayısı (${target.cells.size}) eşleşmiyor"
+        if (target.word.length != target.cells.size) {
+            issues += "${target.word}: kelime uzunluğu (${target.word.length}) ile cell sayısı (${target.cells.size}) eşleşmiyor"
+        }
         if (target.cells.distinct().size != target.cells.size) issues += "${target.word}: aynı cell birden fazla kez kullanılmış"
         target.cells.forEachIndexed { index, pos ->
             if (pos.row !in 0 until level.gridRows || pos.col !in 0 until level.gridCols) {
@@ -65,78 +66,14 @@ fun validateBase44WordLevel(level: Base44WordLevel): List<String> {
                 return@forEachIndexed
             }
             val gridLetter = cellMap[pos.row to pos.col]
-            if (gridLetter == null) issues += "${target.word}: gridde olmayan cell (${pos.row},${pos.col})"
-            else if (index < target.word.length && gridLetter != target.word[index]) issues += "${target.word}: (${pos.row},${pos.col}) için '$gridLetter', beklenen '${target.word[index]}'"
+            if (gridLetter == null) {
+                issues += "${target.word}: gridde olmayan cell (${pos.row},${pos.col})"
+            } else if (index < target.word.length && gridLetter != target.word[index]) {
+                issues += "${target.word}: (${pos.row},${pos.col}) için '$gridLetter', beklenen '${target.word[index]}'"
+            }
         }
     }
     return issues.distinct()
-}
-
-fun Base44WordLevel.toLegacyLevel(): Level {
-    val issues = validateBase44WordLevel(this)
-    require(issues.isEmpty()) { "$title: ${issues.joinToString("; ")}" }
-    val placements = wordsToFind.map { target ->
-        val sameRow = target.cells.map { it.row }.distinct().size == 1
-        val sameCol = target.cells.map { it.col }.distinct().size == 1
-        require(sameRow || sameCol) { "$title / ${target.word}: Android uyumluluk katmanı için hedef cell'ler tek satır veya sütunda olmalı" }
-        val first = target.cells.first()
-        Placement(target.word, first.row, first.col, sameRow)
-    }
-    return Level(
-        title = title,
-        letters = deriveBase44WheelLetters(wordsToFind.map { it.word }),
-        targets = wordsToFind.map { it.word },
-        bonusWords = emptySet(),
-        placements = placements,
-        country = country,
-        gridRows = gridRows,
-        gridCols = gridCols,
-        gridCells = gridCells,
-        wordsToFind = wordsToFind,
-        isActive = isActive,
-    )
-}
-
-fun Level.toBase44WordLevel(levelNumber: Int): Base44WordLevel {
-    if (gridCells.isNotEmpty() && wordsToFind.isNotEmpty()) {
-        return Base44WordLevel(
-            levelNumber = levelNumber,
-            country = country ?: base44CountryIdForLevel(levelNumber),
-            gridRows = gridRows.coerceAtLeast(3),
-            gridCols = gridCols.coerceAtLeast(3),
-            gridCells = gridCells,
-            wordsToFind = wordsToFind,
-            isActive = isActive,
-            title = title,
-        )
-    }
-
-    val map = linkedMapOf<Pair<Int, Int>, Char>()
-    val targets = placements.map { placement ->
-        val cells = placement.word.indices.map { index ->
-            val row = placement.row + if (placement.horizontal) 0 else index
-            val col = placement.col + if (placement.horizontal) index else 0
-            val char = placement.word[index]
-            val key = row to col
-            val previous = map[key]
-            require(previous == null || previous == char) { "$title: geçersiz kesişim $key ($previous/$char)" }
-            map[key] = char
-            Base44CellPosition(row, col)
-        }
-        Base44TargetWord(placement.word, cells)
-    }
-    val rows = (map.keys.maxOfOrNull { it.first } ?: 2) + 1
-    val cols = (map.keys.maxOfOrNull { it.second } ?: 2) + 1
-    return Base44WordLevel(
-        levelNumber = levelNumber,
-        country = country ?: base44CountryIdForLevel(levelNumber),
-        gridRows = rows.coerceAtLeast(3),
-        gridCols = cols.coerceAtLeast(3),
-        gridCells = map.map { (pos, letter) -> Base44GridCell(pos.first, pos.second, letter) },
-        wordsToFind = targets,
-        isActive = isActive,
-        title = title,
-    )
 }
 
 object Base44WordLevelJson {
@@ -151,7 +88,9 @@ object Base44WordLevelJson {
                 val gridCells = buildList {
                     for (j in 0 until cellsJson.length()) {
                         val c = cellsJson.getJSONObject(j)
-                        add(Base44GridCell(c.getInt("row"), c.getInt("col"), c.getString("letter").first()))
+                        val raw = c.getString("letter")
+                        require(raw.isNotEmpty()) { "grid_cells[$j].letter boş olamaz" }
+                        add(Base44GridCell(c.getInt("row"), c.getInt("col"), raw.first()))
                     }
                 }
                 val words = buildList {
@@ -184,6 +123,7 @@ object Base44WordLevelJson {
     }
 }
 
+/** Exact Base44 source fallbacks. Invalid source records are intentionally rejected by the validator. */
 internal val base44ExactFallbackLevels = listOf(
     Base44WordLevel(
         1, "misir", 3, 3,
