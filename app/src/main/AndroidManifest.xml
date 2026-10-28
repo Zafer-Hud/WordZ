@@ -15,7 +15,7 @@
             android:exported="false"
             android:initOrder="100" />
         <activity
-            android:name=".Base44V6MainActivity"
+            android:name=".Base44V7MainActivity"
             android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>
