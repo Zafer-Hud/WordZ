@@ -169,8 +169,8 @@ private fun B44V5App() {
                 next = { if (selectedLevel < levels.lastIndex) openLevel(selectedLevel + 1) else screen = B44V2Screen.MAP },
                 home = { screen = B44V2Screen.HOME },
             )
-            B44V2Screen.MARKET -> B44V3Market(coins, hints, ::setCoinsPersist, ::setHintsPersist) { screen = it }
-            B44V2Screen.PROFILE -> B44V3Profile(coins, hints, player, completed) { screen = it }
+            B44V2Screen.MARKET -> B44V5Market(coins, hints, ::setCoinsPersist, ::setHintsPersist) { screen = it }
+            B44V2Screen.PROFILE -> B44V5Profile(coins, hints, player, completed) { screen = it }
         }
 
         GameToastHost(Modifier.align(Alignment.TopCenter))
