@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlin.math.max
 
 /**
  * Single state owner for the active Base44-compatible app shell.
@@ -53,7 +54,13 @@ internal class WordZAppState(private val prefs: SharedPreferences) {
         player = playerStore.grant(amount).after
     }
 
-    fun canOpen(index: Int): Boolean = index in 0 until levelCount
+    fun canOpen(index: Int): Boolean {
+        if (index !in 0 until levelCount) return false
+        if (index <= unlocked) return true
+        val countryId = Base44RuntimeLevels.canonicalLevels[index].country
+        val firstIndex = base44FirstLevelIndex(countryId) ?: return false
+        return index == firstIndex && base44CountryUnlocked(countryId, completed)
+    }
 
     fun select(index: Int): Boolean {
         if (!canOpen(index)) return false
@@ -62,9 +69,9 @@ internal class WordZAppState(private val prefs: SharedPreferences) {
     }
 
     fun completeSelected() {
-        if (!canOpen(selectedLevel)) return
+        if (selectedLevel !in 0 until levelCount) return
         val nextCompleted = completed + selectedLevel
-        val nextUnlocked = if (selectedLevel >= unlocked && unlocked < levelCount - 1) selectedLevel + 1 else unlocked
+        val nextUnlocked = max(unlocked, (selectedLevel + 1).coerceAtMost(levelCount - 1))
         completed = nextCompleted
         unlocked = nextUnlocked
         prefs.edit()
@@ -79,6 +86,6 @@ internal class WordZAppState(private val prefs: SharedPreferences) {
         unlocked = prefs.getInt(B44V2_UNLOCKED, 0).coerceIn(0, (levelCount - 1).coerceAtLeast(0))
         completed = loadCompleted()
         player = playerStore.snapshot()
-        if (!canOpen(selectedLevel)) selectedLevel = unlocked
+        if (selectedLevel !in 0 until levelCount) selectedLevel = unlocked
     }
 }
