@@ -16,10 +16,12 @@ internal class WordZAppState(private val prefs: SharedPreferences) {
     val levelCount: Int
         get() = Base44RuntimeLevels.canonicalLevels.size
 
-    var coins by mutableIntStateOf(if (prefs.contains(B44V2_COINS)) prefs.getInt(B44V2_COINS, 500) else 500)
-        private set
-    var hints by mutableIntStateOf(prefs.getInt(B44V2_HINTS, 3).coerceAtLeast(0))
-        private set
+    private var coinState by mutableIntStateOf(if (prefs.contains(B44V2_COINS)) prefs.getInt(B44V2_COINS, 500) else 500)
+    val coins: Int get() = coinState
+
+    private var hintState by mutableIntStateOf(prefs.getInt(B44V2_HINTS, 3).coerceAtLeast(0))
+    val hints: Int get() = hintState
+
     var unlocked by mutableIntStateOf(
         prefs.getInt(B44V2_UNLOCKED, 0).coerceIn(0, (levelCount - 1).coerceAtLeast(0))
     )
@@ -36,14 +38,14 @@ internal class WordZAppState(private val prefs: SharedPreferences) {
         .filter { it in 0 until levelCount }
         .toSet()
 
-    fun updateCoins(value: Int) {
-        coins = value.coerceAtLeast(0)
-        prefs.edit().putInt(B44V2_COINS, coins).apply()
+    fun setCoins(value: Int) {
+        coinState = value.coerceAtLeast(0)
+        prefs.edit().putInt(B44V2_COINS, coinState).apply()
     }
 
-    fun updateHints(value: Int) {
-        hints = value.coerceAtLeast(0)
-        prefs.edit().putInt(B44V2_HINTS, hints).apply()
+    fun setHints(value: Int) {
+        hintState = value.coerceAtLeast(0)
+        prefs.edit().putInt(B44V2_HINTS, hintState).apply()
     }
 
     fun grantXp(amount: Int) {
@@ -72,8 +74,8 @@ internal class WordZAppState(private val prefs: SharedPreferences) {
     }
 
     fun refreshFromDisk() {
-        coins = if (prefs.contains(B44V2_COINS)) prefs.getInt(B44V2_COINS, 500).coerceAtLeast(0) else 500
-        hints = prefs.getInt(B44V2_HINTS, 3).coerceAtLeast(0)
+        coinState = if (prefs.contains(B44V2_COINS)) prefs.getInt(B44V2_COINS, 500).coerceAtLeast(0) else 500
+        hintState = prefs.getInt(B44V2_HINTS, 3).coerceAtLeast(0)
         unlocked = prefs.getInt(B44V2_UNLOCKED, 0).coerceIn(0, (levelCount - 1).coerceAtLeast(0))
         completed = loadCompleted()
         player = playerStore.snapshot()
