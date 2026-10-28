@@ -34,7 +34,16 @@ internal class Base44ProgressStore(private val prefs: SharedPreferences) {
         }
     }
 
-    fun score(): Int = prefs.getInt(SCORE_KEY, 0).coerceAtLeast(0)
+    fun score(): Int {
+        if (prefs.contains(SCORE_KEY)) return prefs.getInt(SCORE_KEY, 0).coerceAtLeast(0)
+        val completedCount = prefs.getStringSet(B44V2_COMPLETED, emptySet()).orEmpty()
+            .mapNotNull { it.toIntOrNull() }
+            .distinct()
+            .size
+        val migrated = completedCount * BASE_SCORE
+        prefs.edit().putInt(SCORE_KEY, migrated).apply()
+        return migrated
+    }
 
     fun addScore(amount: Int): Int {
         val updated = (score() + amount.coerceAtLeast(0)).coerceAtLeast(0)
