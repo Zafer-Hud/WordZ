@@ -3,8 +3,7 @@ package com.zafer.wordz
 import androidx.compose.ui.graphics.Color
 import kotlin.math.ceil
 
-/** Visual metadata. Actual level-to-country assignment comes from Base44WordLevel.country. */
-internal val base44CanonicalCountries = listOf(
+private val base44CountryTemplates = listOf(
     B44Country("misir", "MISIR", "🇪🇬", 1, 20, Color(0xFFF5C842), "Piramitlerin gizemini çöz"),
     B44Country("fransa", "FRANSA", "🇫🇷", 21, 40, Color(0xFF60A5FA), "Işıklar şehrinde kelimeleri bul"),
     B44Country("sili", "ŞİLİ", "🇨🇱", 41, 60, Color(0xFF34D399), "And Dağları'na uzan"),
@@ -12,6 +11,22 @@ internal val base44CanonicalCountries = listOf(
     B44Country("turkiye", "TÜRKİYE", "🇹🇷", 81, 100, Color(0xFFFB923C), "Anadolu boyunca keşfet"),
     B44Country("japonya", "JAPONYA", "🇯🇵", 101, 120, Color(0xFFF472B6), "Uzak doğunun son meydan okuması"),
 )
+
+/**
+ * Visual metadata ordered like AdminCountries/gameData, while start/end are derived from the
+ * loaded WordLevel.country records whenever that country has content. This lets a real DB export
+ * override Android's old hard-coded country ranges without changing UI code.
+ */
+internal val base44CanonicalCountries: List<B44Country>
+    get() = base44CountryTemplates.map { template ->
+        val numbers = Base44RuntimeLevels.canonicalLevels
+            .asSequence()
+            .filter { it.country == template.id }
+            .map { it.levelNumber }
+            .toList()
+        if (numbers.isEmpty()) template
+        else template.copy(start = numbers.minOrNull() ?: template.start, end = numbers.maxOrNull() ?: template.end)
+    }
 
 internal fun ensureBase44CountryCatalog() = Unit
 
@@ -36,9 +51,10 @@ internal fun base44CountryCompletedCount(countryId: String, completed: Set<Int>)
     base44CountryLevelIndices(countryId).count { it in completed }
 
 internal fun base44CountryUnlocked(countryId: String, completed: Set<Int>): Boolean {
-    val index = base44CanonicalCountries.indexOfFirst { it.id == countryId }
+    val countries = base44CanonicalCountries
+    val index = countries.indexOfFirst { it.id == countryId }
     if (index <= 0) return true
-    val previousId = base44CanonicalCountries[index - 1].id
+    val previousId = countries[index - 1].id
     val previousLevels = base44CountryLevelIndices(previousId)
     if (previousLevels.isEmpty()) return false
     val needed = ceil(previousLevels.size * 0.50).toInt().coerceAtLeast(1)
