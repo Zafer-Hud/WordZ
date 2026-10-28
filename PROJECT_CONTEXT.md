@@ -15,9 +15,9 @@
 - Güncel uygulama sürümü: **0.29.0**
 - versionCode: **31**
 - Aktif launcher: **`Base44V8MainActivity`**
-- Son doğrulanmış main head: `8a8712a9031e84f0f908197a02e0801c5b28b71b`
-- Son doğrulanan GitHub Actions koşusu: **run 172 / success**
-- Son doğrulamada core test + APK build akışı başarılıdır.
+- Son doğrulanmış uygulama-kodu head'i: `8a8712a9031e84f0f908197a02e0801c5b28b71b`
+- Son doğrulanan uygulama GitHub Actions koşusu: **run 172 / success**
+- Bu head'de core test + APK build akışı başarılıdır. Sonrasında yalnız dokümantasyon commitleri bulunabilir; yeni uygulama kodu değişmişse CI tekrar doğrulanmalıdır.
 
 ## Kaynak önceliği
 
