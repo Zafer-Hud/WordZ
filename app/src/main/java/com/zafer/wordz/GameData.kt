@@ -164,4 +164,9 @@ val base44CanonicalLevels: List<Base44WordLevel> = legacyLevels.mapIndexed { ind
     else legacy.toBase44WordLevel(levelNumber)
 }
 
-val levels: List<Level> = base44CanonicalLevels.map { it.toLegacyLevel() }
+val levels: List<Level> = object : AbstractList<Level>() {
+    override val size: Int
+        get() = Base44RuntimeLevels.canonicalLevels.size
+
+    override fun get(index: Int): Level = Base44RuntimeLevels.canonicalLevels[index].toLegacyLevel()
+}
