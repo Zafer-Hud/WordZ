@@ -9,36 +9,32 @@ private fun fallbackCountryId(levelNumber: Int): String = when (levelNumber) {
     else -> "japonya"
 }
 
-private fun canonicalCrossword(
+private data class GridPlacementSeed(
+    val word: String,
+    val row: Int,
+    val col: Int,
+    val horizontal: Boolean,
+)
+
+private fun canonicalPlaced(
     levelNumber: Int,
     title: String,
-    main: String,
-    second: String,
-    third: String,
+    placements: List<GridPlacementSeed>,
 ): Base44WordLevel {
-    val firstCross = main.indexOf(second.first()).coerceAtLeast(0)
-    val thirdCross = main.lastIndexOf(third.first()).let { if (it >= 0) it else main.lastIndex }
     val map = linkedMapOf<Pair<Int, Int>, Char>()
-
-    fun target(word: String, startRow: Int, startCol: Int, horizontal: Boolean): Base44TargetWord {
-        val cells = word.indices.map { index ->
-            val row = startRow + if (horizontal) 0 else index
-            val col = startCol + if (horizontal) index else 0
-            val letter = word[index]
+    val targets = placements.map { placement ->
+        val cells = placement.word.indices.map { index ->
+            val row = placement.row + if (placement.horizontal) 0 else index
+            val col = placement.col + if (placement.horizontal) index else 0
+            val letter = placement.word[index]
             val key = row to col
             val previous = map[key]
             require(previous == null || previous == letter) { "$title: geçersiz kesişim $key ($previous/$letter)" }
             map[key] = letter
             Base44CellPosition(row, col)
         }
-        return Base44TargetWord(word, cells)
+        Base44TargetWord(placement.word, cells)
     }
-
-    val words = listOf(
-        target(main, 2, 0, true),
-        target(second, 2, firstCross, false),
-        target(third, 2, thirdCross, false),
-    )
     val rows = ((map.keys.maxOfOrNull { it.first } ?: 2) + 1).coerceAtLeast(3)
     val cols = ((map.keys.maxOfOrNull { it.second } ?: 2) + 1).coerceAtLeast(3)
     return Base44WordLevel(
@@ -47,8 +43,39 @@ private fun canonicalCrossword(
         gridRows = rows,
         gridCols = cols,
         gridCells = map.map { (pos, letter) -> Base44GridCell(pos.first, pos.second, letter) },
-        wordsToFind = words,
+        wordsToFind = targets,
         title = title,
+    )
+}
+
+private fun canonicalCrossword(
+    levelNumber: Int,
+    title: String,
+    main: String,
+    second: String,
+    third: String,
+): Base44WordLevel {
+    if (title == "Yolculuk" && main == "YOL" && second == "OY" && third == "OL") {
+        return canonicalPlaced(
+            levelNumber,
+            title,
+            listOf(
+                GridPlacementSeed("YOL", 2, 0, true),
+                GridPlacementSeed("OY", 2, 1, false),
+                GridPlacementSeed("OL", 1, 2, false),
+            ),
+        )
+    }
+    val firstCross = main.indexOf(second.first()).coerceAtLeast(0)
+    val thirdCross = main.lastIndexOf(third.first()).let { if (it >= 0) it else main.lastIndex }
+    return canonicalPlaced(
+        levelNumber,
+        title,
+        listOf(
+            GridPlacementSeed(main, 2, 0, true),
+            GridPlacementSeed(second, 2, firstCross, false),
+            GridPlacementSeed(third, 2, thirdCross, false),
+        ),
     )
 }
 
