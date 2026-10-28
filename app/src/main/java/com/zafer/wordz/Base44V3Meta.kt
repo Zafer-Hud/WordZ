@@ -194,6 +194,9 @@ internal fun B44V3Profile(
     var tab by remember { mutableStateOf("stats") }
     var fullCollection by remember { mutableStateOf(false) }
     if(fullCollection){B44V3Collection(completed,{fullCollection=false},onTab);return}
+    val context=androidx.compose.ui.platform.LocalContext.current
+    val prefs=remember{context.getSharedPreferences(B44V2_PREFS,Context.MODE_PRIVATE)}
+    val score=Base44ProgressStore(prefs).score()
     val xp=player.totalXp
     val level=(xp/500)+1
     val xpProgress=((xp%500)/500f).coerceIn(0f,1f)
@@ -213,7 +216,7 @@ internal fun B44V3Profile(
                 }
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp).padding(bottom=20.dp)) {
                     when(tab){
-                        "stats"->B44ProfileStats(coins,hints,xp,level,completed.size)
+                        "stats"->B44ProfileStats(coins,hints,xp,score,level,completed.size)
                         "ach"->B44Achievements(coins,xp,level,completed.size)
                         else->B44ProfileCollectionPreview(completed.size){fullCollection=true}
                     }
@@ -225,8 +228,8 @@ internal fun B44V3Profile(
 }
 
 @Composable
-private fun B44ProfileStats(coins:Int,hints:Int,xp:Int,level:Int,completed:Int){
-    val cards=listOf(Triple("◆","Altın",coins.toString()),Triple("⚡","XP",xp.toString()),Triple("★","Skor",(completed*200).toString()),Triple("🏆","Tamamlanan",completed.toString()),Triple("💡","İpucu",hints.toString()),Triple("🔥","Seviye",level.toString()))
+private fun B44ProfileStats(coins:Int,hints:Int,xp:Int,score:Int,level:Int,completed:Int){
+    val cards=listOf(Triple("◆","Altın",coins.toString()),Triple("⚡","XP",xp.toString()),Triple("★","Skor",score.toString()),Triple("🏆","Tamamlanan",completed.toString()),Triple("💡","İpucu",hints.toString()),Triple("🔥","Seviye",level.toString()))
     cards.chunked(2).forEach { row -> Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){row.forEach{(icon,label,value)->Column(Modifier.weight(1f).height(106.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha=.04f)).border(1.dp,Color.White.copy(alpha=.08f),RoundedCornerShape(16.dp)),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(icon,fontSize=19.sp);Spacer(Modifier.height(6.dp));Text(value,color=Color.White,fontSize=19.sp,fontWeight=FontWeight.Black);Text(label,color=Color.White.copy(alpha=.4f),fontSize=9.sp)}}};Spacer(Modifier.height(10.dp)) }
 }
 
