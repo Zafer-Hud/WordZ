@@ -43,12 +43,27 @@ class GameProgressStore(private val prefs: SharedPreferences) {
 }
 
 data class ValidatedCell(val row: Int, val col: Int)
-
-data class ValidatedLevel(
-    val lettersByCell: Map<ValidatedCell, Char>,
-)
+data class ValidatedLevel(val lettersByCell: Map<ValidatedCell, Char>)
 
 fun validateLevel(level: Level): ValidatedLevel {
+    if (level.gridCells.isNotEmpty() || level.wordsToFind.isNotEmpty()) {
+        val canonical = level.toBase44WordLevel(1)
+        val issues = validateBase44WordLevel(canonical)
+        require(issues.isEmpty()) { "${level.title}: ${issues.joinToString("; ")}" }
+
+        val map = linkedMapOf<ValidatedCell, Char>()
+        level.gridCells.forEach { cell -> map[ValidatedCell(cell.row, cell.col)] = cell.letter }
+
+        val available = deriveBase44WheelLetters(level.targets).groupingBy { it }.eachCount()
+        level.targets.forEach { word ->
+            val needed = word.groupingBy { it }.eachCount()
+            require(needed.all { (char, count) -> (available[char] ?: 0) >= count }) {
+                "${level.title}: '$word' harf çarkından üretilemiyor"
+            }
+        }
+        return ValidatedLevel(map)
+    }
+
     require(level.targets.toSet() == level.placements.map { it.word }.toSet()) {
         "${level.title}: hedef kelimeler ile yerleşimler eşleşmiyor"
     }
@@ -80,11 +95,6 @@ fun validateLevel(level: Level): ValidatedLevel {
     return ValidatedLevel(map)
 }
 
-/**
- * Startup validation must never take the whole app down because of one bad level.
- * Strict validation is still performed by validateLevel(), while this method logs
- * every data problem and returns the messages so tests/tooling can inspect them.
- */
 fun validateAllLevels(): List<String> {
     val issues = levels.mapNotNull { level ->
         runCatching { validateLevel(level) }
