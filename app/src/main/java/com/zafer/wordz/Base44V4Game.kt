@@ -237,6 +237,7 @@ internal fun B44V4GameScreen(
     val prefs = remember { context.getSharedPreferences(B44V2_PREFS, Context.MODE_PRIVATE) }
     val audio = remember { WordZAudio(context.applicationContext) }
     val playerStore = remember { PlayerProgressStore(prefs) }
+    val progressStore = remember { Base44ProgressStore(prefs) }
     val startXp = remember(levelIndex) { playerStore.snapshot().totalXp }
     val wasCompletedBefore = remember(levelIndex) { completedBefore }
 
@@ -280,18 +281,13 @@ internal fun B44V4GameScreen(
         if (finished || newFound.size < level.targets.size) return
         finished = true
         val elapsed = System.currentTimeMillis() - startedAt
-        val bonus = when {
-            elapsed < 30_000 -> 150
-            elapsed < 60_000 -> 50
-            else -> 0
-        }
-        val xp = if (wasCompletedBefore) 0 else 100 + bonus
-        val coinReward = if (wasCompletedBefore) 0 else 50
-        speedBonus = if (wasCompletedBefore) 0 else bonus
-        rewardXp = xp
-        rewardCoins = coinReward
-        if (coinReward > 0) onCoins(coins + coinReward)
-        if (xp > 0) onRewardXp(xp)
+        val reward = Base44ProgressStore.rewardFor(elapsed, wasCompletedBefore)
+        speedBonus = reward.speedBonus
+        rewardXp = reward.xp
+        rewardCoins = reward.coins
+        if (reward.coins > 0) onCoins(coins + reward.coins)
+        if (reward.xp > 0) onRewardXp(reward.xp)
+        if (reward.score > 0) progressStore.addScore(reward.score)
         onComplete()
         audio.play(WordZAudio.Fx.COMPLETE)
         showResult = true
@@ -411,8 +407,8 @@ internal fun B44V4GameScreen(
                                     onHints(hints - 1)
                                     true
                                 }
-                                coins >= 100 -> {
-                                    onCoins(coins - 100)
+                                coins >= Base44ProgressStore.HINT_COIN_COST -> {
+                                    onCoins(coins - Base44ProgressStore.HINT_COIN_COST)
                                     true
                                 }
                                 else -> false
@@ -657,7 +653,7 @@ private fun B44V4HintButton(hints: Int, coins: Int, click: () -> Unit) {
                 .border(1.dp, B44V2Colors.Deep, CircleShape).padding(horizontal = 6.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(if (free) hints.toString() else if (coins >= 100) "◆" else "✗", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
+            Text(if (free) hints.toString() else if (coins >= Base44ProgressStore.HINT_COIN_COST) "◆" else "✗", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -855,7 +851,7 @@ private fun B44V4SettingsSheet(
                 Text("Ana Menüye Dön", color = Color(0xFFFCA5A5), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
             }
             Spacer(Modifier.height(12.dp))
-            Text("v0.21.0 · Words of Wonders", color = Color.White.copy(alpha = .18f), fontSize = 9.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
+            Text("v0.23.0 · Words of Wonders", color = Color.White.copy(alpha = .18f), fontSize = 9.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
         }
     }
 }
