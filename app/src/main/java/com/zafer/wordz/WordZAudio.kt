@@ -4,6 +4,8 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.SoundPool
+import android.os.VibrationEffect
+import android.os.Vibrator
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.PI
@@ -22,6 +24,7 @@ class WordZAudio(private val context: Context) {
         )
         .build()
 
+    private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     private val ids = mutableMapOf<Fx, Int>()
     private var effectsEnabled = true
     private var musicEnabled = false
@@ -46,12 +49,26 @@ class WordZAudio(private val context: Context) {
 
     fun play(fx: Fx, volume: Float = 1f) {
         if (!effectsEnabled) return
+        vibrate(fx)
         ids[fx]?.let { soundPool.play(it, volume, volume, 1, 0, 1f) }
     }
 
     fun release() {
         stopMusic()
         soundPool.release()
+    }
+
+    private fun vibrate(fx: Fx) {
+        val service = vibrator ?: return
+        runCatching {
+            when (fx) {
+                Fx.SELECT -> service.vibrate(VibrationEffect.createOneShot(8L, 45))
+                Fx.CORRECT, Fx.BONUS -> service.vibrate(VibrationEffect.createOneShot(18L, 75))
+                Fx.WRONG -> service.vibrate(VibrationEffect.createWaveform(longArrayOf(0L, 18L, 28L, 18L), intArrayOf(0, 85, 0, 85), -1))
+                Fx.COMPLETE, Fx.LEVEL_UP -> service.vibrate(VibrationEffect.createWaveform(longArrayOf(0L, 24L, 36L, 34L), intArrayOf(0, 80, 0, 115), -1))
+                Fx.REWARD -> service.vibrate(VibrationEffect.createOneShot(26L, 90))
+            }
+        }
     }
 
     private fun load(name: String, freqs: List<Double>, durations: List<Double>, volume: Double): Int {
