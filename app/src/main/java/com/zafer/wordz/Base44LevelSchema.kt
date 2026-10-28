@@ -18,7 +18,8 @@ data class Base44WordLevel(
     val title: String = "Bölüm $levelNumber",
 )
 
-internal val BASE44_COUNTRY_IDS = setOf("misir", "fransa", "sili", "ispanya", "turkiye", "japonya")
+/** Compatibility field name `country` now stores one of WordZ's theme-world ids. */
+internal val BASE44_COUNTRY_IDS = setOf("hayvanlar", "sehirler", "yemekler", "spor")
 
 fun deriveBase44WheelLetters(words: List<String>): List<Char> {
     val maxCounts = linkedMapOf<Char, Int>()
@@ -32,7 +33,7 @@ fun deriveBase44WheelLetters(words: List<String>): List<Char> {
 fun validateBase44WordLevel(level: Base44WordLevel): List<String> {
     val issues = mutableListOf<String>()
     if (level.levelNumber <= 0) issues += "level_number 1 veya daha büyük olmalı"
-    if (level.country !in BASE44_COUNTRY_IDS) issues += "geçersiz country: ${level.country}"
+    if (level.country !in BASE44_COUNTRY_IDS) issues += "geçersiz tema: ${level.country}"
     if (level.gridRows !in 3..10) issues += "grid_rows 3..10 aralığında olmalı"
     if (level.gridCols !in 3..10) issues += "grid_cols 3..10 aralığında olmalı"
     if (level.gridCells.isEmpty()) issues += "grid_cells boş olamaz"
@@ -122,51 +123,3 @@ object Base44WordLevelJson {
         }.sortedBy { it.levelNumber }
     }
 }
-
-/** Exact Base44 source fallbacks. Invalid source records are intentionally rejected by the validator. */
-internal val base44ExactFallbackLevels = listOf(
-    Base44WordLevel(
-        1, "misir", 3, 3,
-        listOf(Base44GridCell(0,1,'Ş'), Base44GridCell(1,0,'K'), Base44GridCell(1,1,'I'), Base44GridCell(1,2,'Ş'), Base44GridCell(2,1,'K')),
-        listOf(
-            Base44TargetWord("KIŞ", listOf(Base44CellPosition(1,0), Base44CellPosition(1,1), Base44CellPosition(1,2))),
-            Base44TargetWord("ŞIK", listOf(Base44CellPosition(0,1), Base44CellPosition(1,1), Base44CellPosition(2,1)))
-        ), title = "Başlangıç",
-    ),
-    Base44WordLevel(
-        2, "misir", 5, 3,
-        listOf(
-            Base44GridCell(0,1,'M'), Base44GridCell(1,0,'M'), Base44GridCell(1,1,'A'), Base44GridCell(1,2,'Ç'),
-            Base44GridCell(2,1,'Ç'), Base44GridCell(3,0,'A'), Base44GridCell(3,1,'M'), Base44GridCell(3,2,'A'), Base44GridCell(4,1,'Ç')
-        ),
-        listOf(
-            Base44TargetWord("MAÇ", listOf(Base44CellPosition(1,0), Base44CellPosition(1,1), Base44CellPosition(1,2))),
-            Base44TargetWord("AMA", listOf(Base44CellPosition(3,0), Base44CellPosition(3,1), Base44CellPosition(3,2))),
-            Base44TargetWord("MAÇA", listOf(Base44CellPosition(0,1), Base44CellPosition(1,1), Base44CellPosition(2,1), Base44CellPosition(3,1)))
-        ), title = "Sıcak Kumlar",
-    ),
-    Base44WordLevel(
-        3, "misir", 3, 3,
-        listOf(Base44GridCell(0,1,'A'), Base44GridCell(1,0,'A'), Base44GridCell(1,1,'T'), Base44GridCell(1,2,'Ş'), Base44GridCell(2,1,'A')),
-        listOf(
-            Base44TargetWord("ATŞ", listOf(Base44CellPosition(1,0), Base44CellPosition(1,1), Base44CellPosition(1,2))),
-            Base44TargetWord("ATA", listOf(Base44CellPosition(0,1), Base44CellPosition(1,1), Base44CellPosition(2,1)))
-        ), title = "Taş Yolu",
-    ),
-    Base44WordLevel(
-        4, "misir", 3, 3,
-        listOf(Base44GridCell(0,1,'E'), Base44GridCell(1,0,'İ'), Base44GridCell(1,1,'L'), Base44GridCell(1,2,'E'), Base44GridCell(2,1,'İ')),
-        listOf(
-            Base44TargetWord("İLE", listOf(Base44CellPosition(1,0), Base44CellPosition(1,1), Base44CellPosition(1,2))),
-            Base44TargetWord("ELİ", listOf(Base44CellPosition(0,1), Base44CellPosition(1,1), Base44CellPosition(2,1)))
-        ), title = "Elma Bahçesi",
-    ),
-    Base44WordLevel(
-        5, "misir", 3, 3,
-        listOf(Base44GridCell(0,1,'Y'), Base44GridCell(1,0,'Y'), Base44GridCell(1,1,'A'), Base44GridCell(1,2,'Z'), Base44GridCell(2,1,'Y')),
-        listOf(
-            Base44TargetWord("YAZ", listOf(Base44CellPosition(1,0), Base44CellPosition(1,1), Base44CellPosition(1,2))),
-            Base44TargetWord("YAY", listOf(Base44CellPosition(0,1), Base44CellPosition(1,1), Base44CellPosition(2,1)))
-        ), title = "Oyun Zamanı",
-    ),
-)
