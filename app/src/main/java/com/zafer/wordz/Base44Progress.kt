@@ -21,8 +21,8 @@ internal class Base44ProgressStore(private val prefs: SharedPreferences) {
         fun rewardFor(elapsedMs: Long, alreadyCompleted: Boolean): Base44LevelReward {
             if (alreadyCompleted) return Base44LevelReward(0, 0, 0, 0)
             val speedBonus = when {
-                elapsedMs in 1 until 30_000 -> 150
-                elapsedMs in 30_000 until 60_000 -> 50
+                elapsedMs > 0L && elapsedMs < 30_000L -> 150
+                elapsedMs > 0L && elapsedMs < 60_000L -> 50
                 else -> 0
             }
             return Base44LevelReward(
