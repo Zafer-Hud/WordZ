@@ -48,6 +48,9 @@ jobs:
               -dname "CN=WordZ Test, OU=WordZ, O=Zafer, L=Istanbul, ST=Istanbul, C=TR"
           fi
 
+      - name: Run Base44 core tests
+        run: gradle :app:testDebugUnitTest --stacktrace
+
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
 
