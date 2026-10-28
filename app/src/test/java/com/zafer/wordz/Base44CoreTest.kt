@@ -73,4 +73,20 @@ class Base44CoreTest {
         )
         assertTrue(validateBase44WordLevel(level).isEmpty())
     }
+
+    @Test
+    fun localFallbackIsCanonicalAndValid() {
+        assertEquals(35, base44CanonicalLevels.size)
+        assertTrue(base44CanonicalLevels.flatMap(::validateBase44WordLevel).isEmpty())
+        assertEquals((1..35).toList(), base44CanonicalLevels.map { it.levelNumber })
+    }
+
+    @Test
+    fun dailySelectorIsDeterministicAndInRange() {
+        val first = base44DailyLevelIndex(35, 20_000L)
+        val second = base44DailyLevelIndex(35, 20_000L)
+        assertEquals(first, second)
+        assertTrue(first in 0 until 35)
+        assertTrue(base44DailyLevelIndex(1, Long.MIN_VALUE) == 0)
+    }
 }
