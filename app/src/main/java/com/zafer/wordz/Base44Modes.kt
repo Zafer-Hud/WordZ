@@ -2,7 +2,6 @@ package com.zafer.wordz
 
 import android.content.SharedPreferences
 import java.time.LocalDate
-import kotlin.math.absoluteValue
 
 internal enum class Base44PlayMode { CLASSIC, SPEED, DAILY }
 
@@ -13,6 +12,12 @@ data class Base44DailySnapshot(
     val completedToday: Boolean,
 )
 
+internal fun base44DailyLevelIndex(levelCount: Int, epochDay: Long): Int {
+    if (levelCount <= 0) return 0
+    val mixed = epochDay * 1103515245L + 12345L
+    return Math.floorMod(mixed, levelCount.toLong()).toInt()
+}
+
 internal class Base44ModeStore(private val prefs: SharedPreferences) {
     companion object {
         private const val DAILY_DONE_DATE = "b44_daily_done_date"
@@ -21,11 +26,8 @@ internal class Base44ModeStore(private val prefs: SharedPreferences) {
         const val SPEED_LIMIT_MS = 90_000L
     }
 
-    fun dailyLevelIndex(levelCount: Int, date: LocalDate = LocalDate.now()): Int {
-        if (levelCount <= 0) return 0
-        val mixed = (date.toEpochDay() * 1103515245L + 12345L).toInt().absoluteValue
-        return mixed % levelCount
-    }
+    fun dailyLevelIndex(levelCount: Int, date: LocalDate = LocalDate.now()): Int =
+        base44DailyLevelIndex(levelCount, date.toEpochDay())
 
     fun dailySnapshot(levelCount: Int, date: LocalDate = LocalDate.now()): Base44DailySnapshot {
         val doneDate = prefs.getString(DAILY_DONE_DATE, null)?.let { runCatching(LocalDate::parse).getOrNull() }
