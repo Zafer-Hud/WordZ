@@ -16,6 +16,13 @@ data class XpGrantResult(
 )
 
 class PlayerProgressStore(private val prefs: SharedPreferences) {
+    init {
+        // Normalize the legacy shared country list before Home/Map/Game consume it.
+        // This preserves existing level/completion saves while applying Base44's
+        // canonical AdminCountries/gameData country ranges.
+        ensureBase44CountryCatalog()
+    }
+
     companion object {
         private const val XP_KEY = "player_total_xp"
 
