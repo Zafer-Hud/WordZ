@@ -12,7 +12,7 @@ object Base44RuntimeLevels {
     private var active: List<Base44WordLevel>? = null
 
     @Volatile
-    var source: String = "fallback"
+    var source: String = "native"
         private set
 
     val canonicalLevels: List<Base44WordLevel>
@@ -22,7 +22,7 @@ object Base44RuntimeLevels {
         val assetNames = runCatching { context.assets.list("")?.toSet().orEmpty() }.getOrDefault(emptySet())
         if ("word_levels.json" !in assetNames) {
             active = base44CanonicalLevels
-            source = "fallback"
+            source = "native"
             return
         }
 
@@ -33,13 +33,15 @@ object Base44RuntimeLevels {
                 .sortedBy { it.levelNumber }
 
             require(parsed.size == 120) {
-                "word_levels.json tam Base44 export'u olmalı: 120 aktif bölüm bekleniyor, ${parsed.size} bulundu"
+                "word_levels.json 120 aktif bölüm içermeli; ${parsed.size} bulundu"
             }
             require(parsed.map { it.levelNumber }.distinct().size == parsed.size) { "tekrarlanan level_number var" }
             require(parsed.map { it.levelNumber } == (1..120).toList()) {
                 "level_number değerleri 1..120 aralığında eksiksiz ve sıralı olmalı"
             }
+            val allowedWorlds = base44CanonicalCountries.map { it.id }.toSet()
             parsed.forEach { level ->
+                require(level.country in allowedWorlds) { "Bölüm ${level.levelNumber}: bilinmeyen tema ${level.country}" }
                 val issues = validateBase44WordLevel(level)
                 require(issues.isEmpty()) { "Bölüm ${level.levelNumber}: ${issues.joinToString("; ")}" }
             }
@@ -49,11 +51,11 @@ object Base44RuntimeLevels {
         result.onSuccess {
             active = it
             source = "asset"
-            Log.i("WordZLevelImport", "120 canonical Base44 WordLevel asset'ten yüklendi")
+            Log.i("WordZLevelImport", "120 özel WordZ bölümü asset'ten yüklendi")
         }.onFailure {
             active = base44CanonicalLevels
-            source = "fallback"
-            Log.e("WordZLevelImport", "word_levels.json reddedildi; güvenli fallback kullanılıyor", it)
+            source = "native"
+            Log.e("WordZLevelImport", "word_levels.json reddedildi; 120 native tema bölümü kullanılıyor", it)
         }
     }
 
