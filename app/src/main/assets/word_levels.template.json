@@ -1,0 +1,22 @@
+{
+  "levels": [
+    {
+      "level_number": 1,
+      "country": "misir",
+      "grid_rows": 3,
+      "grid_cols": 3,
+      "grid_cells": [
+        {"row": 0, "col": 1, "letter": "Ş"},
+        {"row": 1, "col": 0, "letter": "K"},
+        {"row": 1, "col": 1, "letter": "I"},
+        {"row": 1, "col": 2, "letter": "Ş"},
+        {"row": 2, "col": 1, "letter": "K"}
+      ],
+      "words_to_find": [
+        {"word": "KIŞ", "cells": [[1,0],[1,1],[1,2]]},
+        {"word": "ŞIK", "cells": [[0,1],[1,1],[2,1]]}
+      ],
+      "is_active": true
+    }
+  ]
+}
