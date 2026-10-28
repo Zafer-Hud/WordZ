@@ -16,16 +16,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".Base44V2MainActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".Base44MainActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".V17MainActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".V16MainActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".V15MainActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".RefinedMainActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".MinimalMainActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".PremiumMainActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".PolishedMainActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".ModernMainActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".MainActivity" android:exported="false" android:screenOrientation="portrait" />
     </application>
 </manifest>
