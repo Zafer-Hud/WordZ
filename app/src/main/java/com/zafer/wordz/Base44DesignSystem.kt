@@ -67,6 +67,23 @@ internal object B44V2Colors {
     val Red = Color(0xFFEF4444)
 }
 
+/** Central visual constants used by the active Base44 Compose surfaces. */
+internal object B44Ui {
+    val ScreenPadding = 20.dp
+    val CardRadius = 20.dp
+    val ControlRadius = 14.dp
+    val SmallRadius = 12.dp
+    val Glass = Color.White.copy(alpha = .045f)
+    val GlassStrong = Color.White.copy(alpha = .070f)
+    val Border = Color.White.copy(alpha = .085f)
+    val BorderStrong = Color.White.copy(alpha = .11f)
+    val MutedText = Color.White.copy(alpha = .40f)
+    val DimText = Color.White.copy(alpha = .28f)
+    const val EnterMs = 550
+    const val SplashExitMs = 700
+    const val ToastMs = 2800
+}
+
 internal const val B44V2_PREFS = "wordz_progress"
 internal const val B44V2_COINS = "coins"
 internal const val B44V2_UNLOCKED = "unlocked_level"
@@ -83,16 +100,6 @@ internal data class B44Country(
     val end: Int,
     val accent: Color,
     val subtitle: String,
-)
-
-/** Mutable only for the legacy country normalization bridge. Active UI reads the canonical catalog. */
-internal val b44Countries = mutableListOf(
-    B44Country("misir", "MISIR", "🇪🇬", 1, 20, Color(0xFFF5C842), "Piramitlerin gizemini çöz"),
-    B44Country("fransa", "FRANSA", "🇫🇷", 21, 40, Color(0xFF60A5FA), "Işıklar şehrinde kelimeleri bul"),
-    B44Country("sili", "ŞİLİ", "🇨🇱", 41, 60, Color(0xFF34D399), "And Dağları'na uzan"),
-    B44Country("ispanya", "İSPANYA", "🇪🇸", 61, 80, Color(0xFFFC8181), "Akdeniz ritmini yakala"),
-    B44Country("turkiye", "TÜRKİYE", "🇹🇷", 81, 100, Color(0xFFFB923C), "Anadolu boyunca keşfet"),
-    B44Country("japonya", "JAPONYA", "🇯🇵", 101, 120, Color(0xFFF472B6), "Uzak doğunun son meydan okuması"),
 )
 
 @Composable
@@ -192,9 +199,9 @@ internal fun B44V2BottomNav(
             .navigationBarsPadding()
     ) {
         BoxWithConstraints(
-            Modifier.fillMaxWidth().height(66.dp).clip(RoundedCornerShape(20.dp))
+            Modifier.fillMaxWidth().height(66.dp).clip(RoundedCornerShape(B44Ui.CardRadius))
                 .background(Brush.verticalGradient(listOf(Color(0xF20E1B2E), Color(0xFA081321))))
-                .border(1.dp, Color.White.copy(alpha = .08f), RoundedCornerShape(20.dp))
+                .border(1.dp, B44Ui.Border, RoundedCornerShape(B44Ui.CardRadius))
         ) {
             val tabWidth = maxWidth / items.size
             val indicatorX by animateDpAsState(
